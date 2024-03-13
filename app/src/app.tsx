@@ -12,6 +12,7 @@ import {
 } from "react-router-dom"
 import { Toaster } from "./components/ui/toaster"
 import { useToast } from "./hooks/ui/use-toast"
+import { Auth0Provider } from "@auth0/auth0-react"
 
 const DEFAULT_PARAMETERS_STATE = {
   temperature: 1.0,
@@ -642,7 +643,7 @@ function ProviderWithRoutes() {
 export default function App() {
   return (
     <BrowserRouter>
-      <ProviderWithRoutes />
+        <ProviderWithRoutes />
     </BrowserRouter>
   )
 }

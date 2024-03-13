@@ -1,7 +1,11 @@
+import { useAuth0 } from "@auth0/auth0-react";
 import React from "react"
 import { Link } from "react-router-dom"
+import appConfig from "../../config"
 
 export default function NavBar({ tab, children }: any) {
+  //console.log(process.env);
+  const { logout } = useAuth0();
   const menu = ["playground", "compare", "settings"].map((menuName, index) => (
     <div key = {menuName} className="align-middle mt-1 flex items-center">
       <Link
@@ -53,6 +57,20 @@ export default function NavBar({ tab, children }: any) {
               className = "h-[35px]"
               src= "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png"
             />
+          </div>
+          <div
+            className = "ml-4 mt-1 cursor-pointer flex justify-end items-center self-flex-end"
+          >
+            <button onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })}>
+              Log Out
+            </button>
+          </div>
+          <div
+            className = "ml-4 mt-1 cursor-pointer flex justify-end items-center self-flex-end"
+          >
+            <button onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })}>
+              {appConfig.apiKey}
+            </button>
           </div>
         {children}
       </div>
