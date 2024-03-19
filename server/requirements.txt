@@ -15,3 +15,5 @@ sseclient==0.0.27
 torch==2.0.0
 transformers==4.27.1
 Werkzeug==2.2.2
+boto3
+tqdm

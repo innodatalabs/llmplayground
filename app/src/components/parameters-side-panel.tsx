@@ -30,6 +30,7 @@ const modelProviders = {
   anthropic: "Anthropic",
   cohere: "co:here",
   openai: "OpenAI",
+  amazon: "amazon"
 }
 
 const ParametersSidePanel = ({ showModelDropdown, showModelList }) => {
@@ -433,7 +434,7 @@ const ParametersSidePanel = ({ showModelDropdown, showModelList }) => {
       )
     
     const selectedModel = modelsStateContext.find((modelState) => modelState.selected)
-    
+
     return (
       <div className="">
         <div className="mb-2">

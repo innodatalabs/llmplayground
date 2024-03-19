@@ -54,6 +54,7 @@ export const styleMap = {
     if (showHighlights === false) return styles.default;
     switch (provider) {
       case "openai":
+      case "amazon":
         return styles.openai;
       case "huggingface-local":
         return styles.huggingface_local;

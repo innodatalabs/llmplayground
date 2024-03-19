@@ -9,12 +9,14 @@ import sseclient
 import urllib
 import traceback
 import logging
+import boto3
 
 from aleph_alpha_client import Client as aleph_client, CompletionRequest, Prompt
 from datetime import datetime
 from dataclasses import dataclass
 from typing import Callable, Union
 from .huggingface.hf import HFInference
+from botocore.config import Config
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -667,5 +669,67 @@ class InferenceManager:
     def aleph_alpha_text_generation(self, provider_details: ProviderDetails, inference_request: InferenceRequest):
         self.__error_handler__(self.__aleph_alpha_text_generation__, provider_details, inference_request)
     
+
+    def __amazon_text_generation__(self, provider_details: ProviderDetails, inference_request: InferenceRequest):
+        cancelled = False
+        logger.info(f"Starting inference for {inference_request.uuid} - {inference_request.model_name}")
+
+        # config = Config(retries={"max_attempts": 1}) 
+        # bedrock = boto3.client( 
+        #     service_name="bedrock-runtime", 
+        #     region_name="us-west-2", 
+        #     endpoint_url="https://bedrock-runtime.us-west-2.amazonaws.com", 
+        #     config=config, 
+        # ) 
+        # body = json.dumps( 
+        #     { 
+        #         "inputText": inference_request.prompt, 
+        #     } 
+        # ) 
+    
+        # accept = "application/json" 
+        # contentType = "application/json" 
+        # stream = False
+        # try :
+        #     if stream: 
+        #         response = bedrock.invoke_model_with_response_stream( 
+        #             body=body, modelId="amazon.titan-text-agile-v1", accept=accept, contentType=contentType 
+        #         ) 
+        #     else: 
+        #         response = bedrock.invoke_model( 
+        #             body=body, modelId="amazon.titan-text-agile-v1", accept=accept, contentType=contentType 
+        #         ) 
+        #         response_body = json.loads(response.get("body").read())
+        #         print(json.dumps(response_body, indent=4))
+
+        # except Exception as e: 
+        #     print(e) 
+        #     print(e.__repr__())
+
+
+        dummy = ["Amazon not connected.", "This is a dummy message."]
+
+        infer_response = None
+        for generated_token in dummy:
+            if cancelled: break
+            infer_response = InferenceResult(
+                uuid=inference_request.uuid,
+                model_name=inference_request.model_name,
+                model_tag=inference_request.model_tag,
+                model_provider=inference_request.model_provider,
+                token=generated_token,
+                probability=None,
+                top_n_distribution=None
+            )
+        
+            if not self.announcer.announce(infer_response, event="infer"):
+                cancelled = True
+                logger.info(f"Cancelled inference for {inference_request.uuid} - {inference_request.model_name}")
+
+
+    def amazon_text_generation(self, provider_details: ProviderDetails, inference_request: InferenceRequest):
+        self.__error_handler__(self.__amazon_text_generation__, provider_details, inference_request)
+    
+
     def get_announcer(self):
         return self.announcer 

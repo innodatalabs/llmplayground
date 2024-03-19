@@ -4,9 +4,15 @@ import { Link } from "react-router-dom"
 import appConfig from "../../config"
 
 export default function NavBar({ tab, children }: any) {
-  //console.log(process.env);
-  const { logout } = useAuth0();
-  const menu = ["playground", "compare", "settings"].map((menuName, index) => (
+  const { user, logout } = useAuth0();
+
+  const menuOptions = ["playground", "compare"]
+
+  if (user?.isAdmin) {
+      menuOptions.push("settings");
+  }
+  
+  const menu = menuOptions.map((menuName, index) => (
     <div key = {menuName} className="align-middle mt-1 flex items-center">
       <Link
         to={`/${index > 0 ? menuName: ''}`}
@@ -63,13 +69,6 @@ export default function NavBar({ tab, children }: any) {
           >
             <button onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })}>
               Log Out
-            </button>
-          </div>
-          <div
-            className = "ml-4 mt-1 cursor-pointer flex justify-end items-center self-flex-end"
-          >
-            <button onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })}>
-              {appConfig.apiKey}
             </button>
           </div>
         {children}
