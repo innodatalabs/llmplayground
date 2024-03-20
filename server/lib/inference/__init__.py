@@ -10,7 +10,6 @@ import urllib
 import traceback
 import logging
 import boto3
-import time
 
 from aleph_alpha_client import Client as aleph_client, CompletionRequest, Prompt
 from datetime import datetime
@@ -680,7 +679,6 @@ class InferenceManager:
         access_key = os.environ.get("AWS_ACCESS_KEY_ID")
         secret = os.environ.get("AWS_SECRET_ACCESS_KEY")
 
-        completion = ["Amazon not connected.", "This is a dummy message."]
         infer_response = None
 
         if access_key is not None and secret is not None:
