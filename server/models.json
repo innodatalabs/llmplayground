@@ -810,7 +810,7 @@
     "models": {}
   },
   "amazon": {
-    "requiresAPIKey": true,
+    "requiresAPIKey": false,
     "remoteInference": true,
     "models": {
       "AGI": {
@@ -821,17 +821,17 @@
         ],
         "parameters": {
           "temperature": {
-            "value": 0.5,
+            "value": 0.9,
             "range": [
-              0.1,
+              0,
               1
             ]
           },
           "maximumLength": {
-            "value": 200,
+            "value": 3072,
             "range": [
               50,
-              2048
+              8096
             ]
           },
           "topP": {
