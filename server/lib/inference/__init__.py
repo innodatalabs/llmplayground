@@ -132,10 +132,11 @@ class InferenceAnnouncer:
             self.cancel_cache[uuid] = True      
    
 class InferenceManager:
-    def __init__(self, sse_topic):
-        self.announcer = InferenceAnnouncer(sse_topic)
+    def __init__(self, sse_topic, sse_manager):
+        self.sse_manager = sse_manager
+        #self.announcer = InferenceAnnouncer(sse_topic)
 
-    def __error_handler__(self, inference_fn: InferenceFunction, provider_details: ProviderDetails, inference_request: InferenceRequest):
+    def __error_handler__(self, inference_fn: InferenceFunction, provider_details: ProviderDetails, inference_request: InferenceRequest, announcer):
         logger.info(f"Requesting inference from {inference_request.model_name} on {inference_request.model_provider}")
         infer_result = InferenceResult(
             uuid=inference_request.uuid,
@@ -147,7 +148,7 @@ class InferenceManager:
             top_n_distribution=None
         )
 
-        if not self.announcer.announce(InferenceResult(
+        if not announcer.announce(InferenceResult(
             uuid=inference_request.uuid,
             model_name=inference_request.model_name,
             model_tag=inference_request.model_tag,
@@ -159,7 +160,7 @@ class InferenceManager:
             return
 
         try:
-            inference_fn(provider_details, inference_request)
+            inference_fn(provider_details, inference_request, announcer)
         except openai.error.Timeout as e:
             infer_result.token = f"[ERROR] OpenAI API request timed out: {e}"
             logger.error(f"OpenAI API request timed out: {e}")
@@ -197,7 +198,7 @@ class InferenceManager:
         finally:
             if infer_result.token is None:
                 infer_result.token = "[COMPLETED]"
-            self.announcer.announce(infer_result, event="status")
+            announcer.announce(infer_result, event="status")
             logger.info(f"Completed inference for {inference_request.model_name} on {inference_request.model_provider}")
     
     def __openai_chat_generation__(self, provider_details: ProviderDetails, inference_request: InferenceRequest):
@@ -670,7 +671,8 @@ class InferenceManager:
         self.__error_handler__(self.__aleph_alpha_text_generation__, provider_details, inference_request)
     
 
-    def __amazon_text_generation__(self, provider_details: ProviderDetails, inference_request: InferenceRequest):
+    def __amazon_text_generation__(self, provider_details: ProviderDetails, inference_request: InferenceRequest, announcer):
+
         cancelled = False
         logger.info(f"Starting inference for {inference_request.uuid} - {inference_request.model_name}")
 
@@ -719,16 +721,16 @@ class InferenceManager:
                             token = chunk['outputText']
                             print(token)
                             infer_response = InferenceResult(
-                            uuid=inference_request.uuid,
-                            model_name=inference_request.model_name,
-                            model_tag=inference_request.model_tag,
-                            model_provider=inference_request.model_provider,
-                            token=token,
-                            probability=None,
-                            top_n_distribution=None
-                        )
+                                uuid=inference_request.uuid,
+                                model_name=inference_request.model_name,
+                                model_tag=inference_request.model_tag,
+                                model_provider=inference_request.model_provider,
+                                token=token,
+                                probability=None,
+                                top_n_distribution=None
+                            )
                     
-                        if not self.announcer.announce(infer_response, event="infer"):
+                        if not announcer.announce(infer_response, event="infer"):
                             cancelled = True
                             logger.info(f"Cancelled inference for {inference_request.uuid} - {inference_request.model_name}")
 
@@ -739,8 +741,8 @@ class InferenceManager:
         else:
             raise Exception("Couldn't find access key and secret, bypassing API")
 
-    def amazon_text_generation(self, provider_details: ProviderDetails, inference_request: InferenceRequest):
-        self.__error_handler__(self.__amazon_text_generation__, provider_details, inference_request)
+    def amazon_text_generation(self, provider_details: ProviderDetails, inference_request: InferenceRequest, announcer):
+        self.__error_handler__(self.__amazon_text_generation__, provider_details, inference_request, announcer)
     
 
     def get_announcer(self):

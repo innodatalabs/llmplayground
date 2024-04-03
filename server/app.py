@@ -277,7 +277,8 @@ class GlobalStateManager:
         self.notification_manager = NotificationManager(self.sse_manager.get_topic("notifications"))
 
         self.inference_manager = InferenceManager(
-            self.sse_manager.get_topic("inferences")
+            self.sse_manager.get_topic("inferences"),
+            self.sse_manager
         )
         self.storage = storage
         self.download_manager = DownloadManager(storage)
@@ -288,7 +289,7 @@ class GlobalStateManager:
     def get_sse_manager(self):
         return self.sse_manager
 
-    def text_generation(self, inference_request: InferenceRequest):
+    def text_generation(self, inference_request: InferenceRequest, announcer):
         provider = self.storage.get_provider(inference_request.model_provider)
 
         provider_details = ProviderDetails(
@@ -312,7 +313,7 @@ class GlobalStateManager:
         elif inference_request.model_provider == "aleph-alpha":
             return self.inference_manager.aleph_alpha_text_generation(provider_details, inference_request)
         elif inference_request.model_provider == "amazon":
-            return self.inference_manager.amazon_text_generation(provider_details, inference_request)
+            return self.inference_manager.amazon_text_generation(provider_details, inference_request, announcer)
         else:
             raise Exception(
                 f"Unknown model provider, {inference_request.model_provider}. Please add a generation function in InferenceManager or route in ModelManager.text_generation"

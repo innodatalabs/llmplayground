@@ -4,12 +4,14 @@ import time
 import threading
 
 from .response_utils import create_response_message
-from ..inference import InferenceRequest, InferenceResult, InferenceRequest
+from ..inference import InferenceRequest, InferenceResult, InferenceRequest, InferenceAnnouncer
 from ..sse import Message
 
 from concurrent.futures import ThreadPoolExecutor
 from flask import g, request, Response, stream_with_context, Blueprint, current_app
 from typing import List, Tuple
+
+import uuid
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -31,16 +33,22 @@ def stream_inference():
     if not is_valid_request_data(data):
         return create_response_message("Invalid request", 400)
 
-    request_uuid = "1"
+    request_uuid = str(uuid.uuid4())
     prompt = data['prompt']
     models = data['models']
+
+    SSE_MANAGER = global_state.get_sse_manager()
+    SSE_MANAGER.add_topic("inferences-" + request_uuid)
+    sse_topic = SSE_MANAGER.get_topic("inferences-" + request_uuid)
     
+    announcer = InferenceAnnouncer(sse_topic)
+
     all_tasks = [task for task in (create_inference_request(model, storage, prompt, request_uuid) for model in models) if task is not None]
 
     if not all_tasks:
         return create_response_message("Invalid Request", 400)
 
-    thread = threading.Thread(target=bulk_completions, args=(global_state, all_tasks,))
+    thread = threading.Thread(target=bulk_completions, args=(global_state, all_tasks, announcer))
     thread.start()
 
     return stream_response(global_state, request_uuid)
@@ -83,7 +91,7 @@ def stream_response(global_state, uuid):
     @stream_with_context
     def generator():
         SSE_MANAGER = global_state.get_sse_manager()
-        messages = SSE_MANAGER.listen("inferences")
+        messages = SSE_MANAGER.listen("inferences" + uuid)
         try:
             while True:
                 message = json.loads(message := messages.get())
@@ -94,23 +102,25 @@ def stream_response(global_state, uuid):
                 yield str(Message(**message))
         except GeneratorExit:
             logger.info("GeneratorExit")
-            SSE_MANAGER.publish("inferences", message=json.dumps({"uuid": uuid}))
+            SSE_MANAGER.publish("inferences" + uuid, message=json.dumps({"uuid": uuid}))
 
     return Response(stream_with_context(generator()), mimetype='text/event-stream')
 
-def bulk_completions(global_state, tasks: List[InferenceRequest]):
+def bulk_completions(global_state, tasks: List[InferenceRequest], announcer):
     time.sleep(1)
     local_tasks, remote_tasks = split_tasks_by_provider(tasks)
 
     if remote_tasks:
         with ThreadPoolExecutor(max_workers=len(remote_tasks)) as executor:
-            futures = [executor.submit(global_state.text_generation, task) for task in remote_tasks]
+            futures = [executor.submit(global_state.text_generation, task, announcer) for task in remote_tasks]
             [future.result() for future in futures]
 
     for task in local_tasks:
-        global_state.text_generation(task)
+        global_state.text_generation(task, announcer)
 
-    global_state.get_announcer().announce(InferenceResult(
+    global_state.get_sse_manager()
+
+    announcer.announce(InferenceResult(
         uuid=tasks[0].uuid,
         model_name=None,
         model_tag=None,
