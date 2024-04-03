@@ -1,5 +1,5 @@
 {
-  "version": "1.0.2",
+  "version": "1.0.3",
   "devDependencies": {
     "@parcel/compressor-brotli": "^2.8.3",
     "@parcel/compressor-gzip": "^2.8.3",

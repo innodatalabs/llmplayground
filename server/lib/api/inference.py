@@ -91,7 +91,7 @@ def stream_response(global_state, uuid):
     @stream_with_context
     def generator():
         SSE_MANAGER = global_state.get_sse_manager()
-        messages = SSE_MANAGER.listen("inferences" + uuid)
+        messages = SSE_MANAGER.listen("inferences-" + uuid)
         try:
             while True:
                 message = json.loads(message := messages.get())
@@ -102,12 +102,11 @@ def stream_response(global_state, uuid):
                 yield str(Message(**message))
         except GeneratorExit:
             logger.info("GeneratorExit")
-            SSE_MANAGER.publish("inferences" + uuid, message=json.dumps({"uuid": uuid}))
+            SSE_MANAGER.publish("inferences-" + uuid, message=json.dumps({"uuid": uuid}))
 
     return Response(stream_with_context(generator()), mimetype='text/event-stream')
 
 def bulk_completions(global_state, tasks: List[InferenceRequest], announcer):
-    time.sleep(1)
     local_tasks, remote_tasks = split_tasks_by_provider(tasks)
 
     if remote_tasks:
