@@ -134,7 +134,7 @@ class InferenceAnnouncer:
 class InferenceManager:
     def __init__(self, sse_topic, sse_manager):
         self.sse_manager = sse_manager
-        #self.announcer = InferenceAnnouncer(sse_topic)
+        #announcer = InferenceAnnouncer(sse_topic)
 
     def __error_handler__(self, inference_fn: InferenceFunction, provider_details: ProviderDetails, inference_request: InferenceRequest, announcer):
         logger.info(f"Requesting inference from {inference_request.model_name} on {inference_request.model_provider}")
@@ -201,7 +201,7 @@ class InferenceManager:
             announcer.announce(infer_result, event="status")
             logger.info(f"Completed inference for {inference_request.model_name} on {inference_request.model_provider}")
     
-    def __openai_chat_generation__(self, provider_details: ProviderDetails, inference_request: InferenceRequest):
+    def __openai_chat_generation__(self, provider_details: ProviderDetails, inference_request: InferenceRequest, announcer):
         openai.api_key = provider_details.api_key
 
         current_date = datetime.now().strftime("%Y-%m-%d")
@@ -254,11 +254,11 @@ class InferenceManager:
 
             if cancelled: continue
 
-            if not self.announcer.announce(infer_response, event="infer"):
+            if not announcer.announce(infer_response, event="infer"):
                 cancelled = True
                 logger.info(f"Cancelled inference for {inference_request.uuid} - {inference_request.model_name}")
 
-    def __openai_text_generation__(self, provider_details: ProviderDetails, inference_request: InferenceRequest):
+    def __openai_text_generation__(self, provider_details: ProviderDetails, inference_request: InferenceRequest, announcer):
         openai.api_key = provider_details.api_key
 
         response = openai.Completion.create(
@@ -323,18 +323,18 @@ class InferenceManager:
 
             if cancelled: continue
 
-            if not self.announcer.announce(infer_response, event="infer"):
+            if not announcer.announce(infer_response, event="infer"):
                 cancelled = True
                 logger.info(f"Cancelled inference for {inference_request.uuid} - {inference_request.model_name}")
 
-    def openai_text_generation(self, provider_details: ProviderDetails, inference_request: InferenceRequest):
+    def openai_text_generation(self, provider_details: ProviderDetails, inference_request: InferenceRequest, announcer):
         # TODO: Add a meta field to the inference so we know when a model is chat vs text
         if inference_request.model_name in ["gpt-3.5-turbo", "gpt-4"]:
-            self.__error_handler__(self.__openai_chat_generation__, provider_details, inference_request)
+            self.__error_handler__(self.__openai_chat_generation__, provider_details, inference_request, announcer)
         else:
-            self.__error_handler__(self.__openai_text_generation__, provider_details, inference_request)
+            self.__error_handler__(self.__openai_text_generation__, provider_details, inference_request, announcer)
 
-    def __cohere_text_generation__(self, provider_details: ProviderDetails, inference_request: InferenceRequest):
+    def __cohere_text_generation__(self, provider_details: ProviderDetails, inference_request: InferenceRequest, announcer):
         with requests.post("https://api.cohere.ai/generate",
             headers={
                 "Authorization": f"Bearer {provider_details.api_key}",
@@ -366,7 +366,7 @@ class InferenceManager:
                 token_json = json.loads(token)
                 if cancelled: continue
 
-                if not self.announcer.announce(InferenceResult(
+                if not announcer.announce(InferenceResult(
                     uuid=inference_request.uuid,
                     model_name=inference_request.model_name,
                     model_tag=inference_request.model_tag,
@@ -378,10 +378,10 @@ class InferenceManager:
                     cancelled = True
                     logger.info(f"Cancelled inference for {inference_request.uuid} - {inference_request.model_name}")
 
-    def cohere_text_generation(self, provider_details: ProviderDetails, inference_request: InferenceRequest):
-        self.__error_handler__(self.__cohere_text_generation__, provider_details, inference_request)
+    def cohere_text_generation(self, provider_details: ProviderDetails, inference_request: InferenceRequest, announcer):
+        self.__error_handler__(self.__cohere_text_generation__, provider_details, inference_request, announcer)
     
-    def __huggingface_text_generation__(self, provider_details: ProviderDetails, inference_request: InferenceRequest):
+    def __huggingface_text_generation__(self, provider_details: ProviderDetails, inference_request: InferenceRequest, announcer):
         response = requests.request("POST",
             f"https://api-inference.huggingface.co/models/{inference_request.model_name}",
             headers={"Authorization": f"Bearer {provider_details.api_key}"},
@@ -415,7 +415,7 @@ class InferenceManager:
             outputs = return_data[0]["generated_text"]
             outputs = outputs.removeprefix(inference_request.prompt)
 
-            self.announcer.announce(InferenceResult(
+            announcer.announce(InferenceResult(
                 uuid=inference_request.uuid,
                 model_name=inference_request.model_name,
                 model_tag=inference_request.model_tag,
@@ -445,7 +445,7 @@ class InferenceManager:
 
                 if cancelled: continue
 
-                if not self.announcer.announce(
+                if not announcer.announce(
                     InferenceResult(
                         uuid=inference_request.uuid,
                         model_name=inference_request.model_name,
@@ -460,10 +460,10 @@ class InferenceManager:
                     cancelled = True
                     logger.info(f"Cancelled inference for {inference_request.uuid} - {inference_request.model_name}")
            
-    def huggingface_text_generation(self, provider_details: ProviderDetails, inference_request: InferenceRequest):
-        self.__error_handler__(self.__huggingface_text_generation__, provider_details, inference_request)
+    def huggingface_text_generation(self, provider_details: ProviderDetails, inference_request: InferenceRequest, announcer):
+        self.__error_handler__(self.__huggingface_text_generation__, provider_details, inference_request, announcer)
 
-    def __forefront_text_generation__(self, provider_details: ProviderDetails, inference_request: InferenceRequest):
+    def __forefront_text_generation__(self, provider_details: ProviderDetails, inference_request: InferenceRequest, announcer):
         with requests.post(
                 f"https://shared-api.forefront.link/organization/gPn2ZLSO3mTh/{inference_request.model_name}/completions/{provider_details.version_key}",
                 headers={
@@ -499,7 +499,7 @@ class InferenceManager:
                     generated_token = packet.data[aggregate_string_length:]
                     aggregate_string_length = len(packet.data)
 
-                    if not self.announcer.announce(InferenceResult(
+                    if not announcer.announce(InferenceResult(
                         uuid=inference_request.uuid,
                         model_name=inference_request.model_name,
                         model_tag=inference_request.model_tag,
@@ -546,7 +546,7 @@ class InferenceManager:
                         prob_dist.log_prob_sum = chosen_log_prob
                         prob_dist.simple_prob_sum = round(prob_dist.simple_prob_sum, 2)
 
-                        if not self.announcer.announce(InferenceResult(
+                        if not announcer.announce(InferenceResult(
                             uuid=inference_request.uuid,
                             model_name=inference_request.model_name,
                             model_tag=inference_request.model_tag,
@@ -566,10 +566,10 @@ class InferenceManager:
 
                 if cancelled: continue
 
-    def forefront_text_generation(self, provider_details: ProviderDetails, inference_request: InferenceRequest):
-        self.__error_handler__(self.__forefront_text_generation__, provider_details, inference_request)
+    def forefront_text_generation(self, provider_details: ProviderDetails, inference_request: InferenceRequest, announcer):
+        self.__error_handler__(self.__forefront_text_generation__, provider_details, inference_request, announcer)
 
-    def __local_text_generation__(self, provider_details: ProviderDetails, inference_request: InferenceRequest):
+    def __local_text_generation__(self, provider_details: ProviderDetails, inference_request: InferenceRequest, announcer):
         cancelled = False
         logger.info(f"Starting inference for {inference_request.uuid} - {inference_request.model_name}")
 
@@ -597,14 +597,14 @@ class InferenceManager:
                 top_n_distribution=None
             )
         
-            if not self.announcer.announce(infer_response, event="infer"):
+            if not announcer.announce(infer_response, event="infer"):
                 cancelled = True
                 logger.info(f"Cancelled inference for {inference_request.uuid} - {inference_request.model_name}")
 
-    def local_text_generation(self, provider_details: ProviderDetails, inference_request: InferenceRequest):
-       self.__error_handler__(self.__local_text_generation__, provider_details, inference_request)
+    def local_text_generation(self, provider_details: ProviderDetails, inference_request: InferenceRequest, announcer):
+       self.__error_handler__(self.__local_text_generation__, provider_details, inference_request, announcer)
     
-    def __anthropic_text_generation__(self, provider_details: ProviderDetails, inference_request: InferenceRequest):
+    def __anthropic_text_generation__(self, provider_details: ProviderDetails, inference_request: InferenceRequest, announcer):
         c = anthropic.Client(provider_details.api_key)
 
         response = c.completion_stream(
@@ -625,7 +625,7 @@ class InferenceManager:
             generated_token = new_completion[len(completion):]
             if cancelled: continue
 
-            if not self.announcer.announce(InferenceResult(
+            if not announcer.announce(InferenceResult(
                 uuid=inference_request.uuid,
                 model_name=inference_request.model_name,
                 model_tag=inference_request.model_tag,
@@ -639,10 +639,10 @@ class InferenceManager:
 
             completion = new_completion
 
-    def anthropic_text_generation(self, provider_details: ProviderDetails, inference_request: InferenceRequest):
-        self.__error_handler__(self.__anthropic_text_generation__, provider_details, inference_request)
+    def anthropic_text_generation(self, provider_details: ProviderDetails, inference_request: InferenceRequest, announcer):
+        self.__error_handler__(self.__anthropic_text_generation__, provider_details, inference_request, announcer)
     
-    def __aleph_alpha_text_generation__(self, provider_details: ProviderDetails, inference_request: InferenceRequest):
+    def __aleph_alpha_text_generation__(self, provider_details: ProviderDetails, inference_request: InferenceRequest, announcer):
         client = aleph_client(provider_details.api_key)
         
         request = CompletionRequest(
@@ -657,7 +657,7 @@ class InferenceManager:
         
         response = client.complete(request, model=inference_request.model_name)
         
-        self.announcer.announce(InferenceResult(
+        announcer.announce(InferenceResult(
             uuid=inference_request.uuid,
             model_name=inference_request.model_name,
             model_tag=inference_request.model_tag,
@@ -667,8 +667,8 @@ class InferenceManager:
             top_n_distribution=None
         ), event="infer")
 
-    def aleph_alpha_text_generation(self, provider_details: ProviderDetails, inference_request: InferenceRequest):
-        self.__error_handler__(self.__aleph_alpha_text_generation__, provider_details, inference_request)
+    def aleph_alpha_text_generation(self, provider_details: ProviderDetails, inference_request: InferenceRequest, announcer):
+        self.__error_handler__(self.__aleph_alpha_text_generation__, provider_details, inference_request, announcer)
     
 
     def __amazon_text_generation__(self, provider_details: ProviderDetails, inference_request: InferenceRequest, announcer):
@@ -676,7 +676,7 @@ class InferenceManager:
         cancelled = False
         logger.info(f"Starting inference for {inference_request.uuid} - {inference_request.model_name}")
 
-        config = Config(retries={"max_attempts": 1}) 
+        config = Config(retries={"max_attempts": 5}) 
         
         access_key = os.environ.get("AWS_ACCESS_KEY_ID")
         secret = os.environ.get("AWS_SECRET_ACCESS_KEY")
@@ -743,7 +743,3 @@ class InferenceManager:
 
     def amazon_text_generation(self, provider_details: ProviderDetails, inference_request: InferenceRequest, announcer):
         self.__error_handler__(self.__amazon_text_generation__, provider_details, inference_request, announcer)
-    
-
-    def get_announcer(self):
-        return self.announcer 

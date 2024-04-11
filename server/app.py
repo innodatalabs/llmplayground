@@ -299,28 +299,25 @@ class GlobalStateManager:
         logger.info(f"Received inference request {inference_request.model_provider}")
 
         if inference_request.model_provider == "openai":
-            return self.inference_manager.openai_text_generation(provider_details, inference_request)
+            return self.inference_manager.openai_text_generation(provider_details, inference_request, announcer)
         elif inference_request.model_provider == "cohere":
-            return self.inference_manager.cohere_text_generation(provider_details, inference_request)
+            return self.inference_manager.cohere_text_generation(provider_details, inference_request, announcer)
         elif inference_request.model_provider == "huggingface":
-            return self.inference_manager.huggingface_text_generation(provider_details, inference_request)
+            return self.inference_manager.huggingface_text_generation(provider_details, inference_request, announcer)
         elif inference_request.model_provider == "forefront":
-            return self.inference_manager.forefront_text_generation(provider_details, inference_request)
+            return self.inference_manager.forefront_text_generation(provider_details, inference_request, announcer)
         elif inference_request.model_provider == "huggingface-local":
-            return self.inference_manager.local_text_generation(provider_details, inference_request)
+            return self.inference_manager.local_text_generation(provider_details, inference_request, announcer)
         elif inference_request.model_provider == "anthropic":
-            return self.inference_manager.anthropic_text_generation(provider_details, inference_request)
+            return self.inference_manager.anthropic_text_generation(provider_details, inference_request, announcer)
         elif inference_request.model_provider == "aleph-alpha":
-            return self.inference_manager.aleph_alpha_text_generation(provider_details, inference_request)
+            return self.inference_manager.aleph_alpha_text_generation(provider_details, inference_request, announcer)
         elif inference_request.model_provider == "amazon":
             return self.inference_manager.amazon_text_generation(provider_details, inference_request, announcer)
         else:
             raise Exception(
                 f"Unknown model provider, {inference_request.model_provider}. Please add a generation function in InferenceManager or route in ModelManager.text_generation"
             )
-    
-    def get_announcer(self):
-        return self.inference_manager.get_announcer()
 
 @click.group()
 def cli():
