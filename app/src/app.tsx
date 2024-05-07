@@ -627,7 +627,7 @@ const PlaygroundContextWrapper = ({page, children}) => {
 function ProviderWithRoutes() {
   return (
     <Routes>
-      <Route
+      {/* <Route
         path="/"
         element={
           <APIContextWrapper>
@@ -649,10 +649,10 @@ function ProviderWithRoutes() {
             </PlaygroundContextWrapper>
           </APIContextWrapper>
         }
-      />
+      /> */}
 
       <Route
-        path="/chat"
+        path="/"
         element={
           <APIContextWrapper>
             <PlaygroundContextWrapper key = "chat" page = "chat">

@@ -221,6 +221,7 @@ html, body, #app {
 
 .chat-message {
   margin-bottom:16px;
+  position:relative;
 }
 
 .chat-message-role {
@@ -239,4 +240,24 @@ html, body, #app {
 
 .chat-message-content.assistant {
   background-color: rgb(185, 238, 188);
+}
+
+.chat-clipboardbutton {
+  position:absolute;
+  right:5px;
+  bottom:5px;
+  height:20px;
+  width:20px;
+  padding:0px;
+  background: transparent;
+  border:none !important;
+  outline: none !important;
+  box-shadow:none !important;
+  
+}
+
+.chat-clipboardbutton:focus {
+  border:none !important;
+  outline: none !important;
+  box-shadow:none !important;
 }

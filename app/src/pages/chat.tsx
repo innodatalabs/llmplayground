@@ -1,4 +1,4 @@
-import { Loader2 } from "lucide-react";
+import { Loader2, ClipboardCopy } from "lucide-react";
 import React, { useContext, useEffect, useRef, useState } from "react";
 import { APIContext, ChatContext, ModelsStateContext } from "../app";
 import NavBar from "../components/navbar";
