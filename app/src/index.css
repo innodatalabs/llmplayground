@@ -189,3 +189,75 @@ html, body, #app {
   opacity: 0;
   transition: opacity 500ms ease-in;
 }
+
+.chat-textarea {
+  width:100%;
+  border:1pt solid black;
+  border-radius:5pt;
+  padding:5px;
+
+}
+
+.chat-buttonarea {
+  display:flex;
+  gap:10px;
+}
+
+.chat-mainarea {
+  display:flex;
+  flex-direction: column;
+  width:100%;
+  height: 100%;
+  padding:20px 20px 40px 20px;
+}
+
+.chat-messagearea {
+  flex:1;
+  width:100%;
+  padding-right:15px;
+  overflow-y:scroll;
+  margin-bottom:10px;
+}
+
+.chat-message {
+  margin-bottom:16px;
+  position:relative;
+}
+
+.chat-message-role {
+  margin-bottom:3px;
+  font-weight: bold;
+}
+
+.chat-message-content {
+  padding:10px;
+  border-radius:8px;
+}
+
+.chat-message-content.user {
+  background-color: #d9d9d9;
+}
+
+.chat-message-content.assistant {
+  background-color: rgb(185, 238, 188);
+}
+
+.chat-clipboardbutton {
+  position:absolute;
+  right:5px;
+  bottom:5px;
+  height:20px;
+  width:20px;
+  padding:0px;
+  background: transparent;
+  border:none !important;
+  outline: none !important;
+  box-shadow:none !important;
+  
+}
+
+.chat-clipboardbutton:focus {
+  border:none !important;
+  outline: none !important;
+  box-shadow:none !important;
+}

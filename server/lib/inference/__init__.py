@@ -708,7 +708,7 @@ class InferenceManager:
             try :
                
                 response = bedrock.invoke_model_with_response_stream( 
-                    body=body, modelId="amazon.titan-text-agile-v1", accept=accept, contentType=contentType 
+                    body=body, modelId="amazon.titan-text-premier-v1:0", accept=accept, contentType=contentType 
                 ) 
                 stream = response.get('body')
                 if stream:
