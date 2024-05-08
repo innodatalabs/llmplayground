@@ -13,7 +13,8 @@ import {
 import { Toaster } from "./components/ui/toaster"
 import { useToast } from "./hooks/ui/use-toast"
 import { Auth0Provider } from "@auth0/auth0-react"
-import Chat, { Role } from "./pages/chat"
+import Chat, { ChatMessage, Role } from "./pages/chat"
+import { ChatMessage } from "./pages/chat/chatmessage"
 
 const DEFAULT_PARAMETERS_STATE = {
   temperature: 1.0,
@@ -374,7 +375,7 @@ const PlaygroundContextWrapper = ({page, children}) => {
   const [historyContext, _setHistoryContext] = React.useState(DEFAULT_CONTEXTS.PAGES[page].history);
   const [chatContext, _setChatContext] = React.useState(
   {
-    messages:[]
+    messages: []
   })
 
   /* Temporary fix for models that have been purged remotely but are still cached locally */

@@ -229,10 +229,29 @@ html, body, #app {
   font-weight: bold;
 }
 
+.chat-message-date {
+  margin-left:10px;
+  font-weight: normal;
+}
+
 .chat-message-content {
   padding:10px;
   border-radius:8px;
+  white-space: pre-wrap;
+  padding-bottom:20px;
 }
+
+.chat-message-editing {
+  padding:10px;
+  border-radius:8px;
+  border:1pt solid black;
+  white-space: pre-wrap;
+  padding-bottom:20px;
+  resize: none;
+  width:100%;
+}
+
+
 
 .chat-message-content.user {
   background-color: #d9d9d9;
@@ -243,17 +262,22 @@ html, body, #app {
 }
 
 .chat-clipboardbutton {
-  position:absolute;
-  right:5px;
-  bottom:5px;
-  height:20px;
-  width:20px;
-  padding:0px;
   background: transparent;
   border:none !important;
   outline: none !important;
   box-shadow:none !important;
-  
+  padding:0px; 
+  height:18px;
+  width:18px;
+}
+
+.chat-clipboardbutton-container {
+  position:absolute;
+  right:5px;
+  bottom:5px;
+  display:flex;
+  align-items:center;
+  gap:2px;
 }
 
 .chat-clipboardbutton:focus {

@@ -12,6 +12,11 @@ export enum Role {
     ASSISTANT = "assistant"
 }
 
+export interface ChatMessage {
+  role: Role,
+  content: string,
+  date: Date
+}
 
 const CustomAlertDialogue = ({dialog}) => {
     const [openDialog, setOpenDialog] = React.useState<boolean>(false)
@@ -88,46 +93,51 @@ export default function Chat() {
             return;
         }
 
+
+        let newMessages : ChatMessage[] = [...chatContext.messages];
+
         if (!!textAreaVal && (textAreaVal.trim().length > 0)) {
-            let newMessages = [...chatContext.messages, {
+            newMessages = [...chatContext.messages, {
                 role: Role.USER,
-                content: textAreaVal
+                content: textAreaVal,
+                date: new Date()
             }]
             _setChatContext({
                 messages : newMessages
             })
             setTextAreaVal('');
+          } 
 
-            let prompt = newMessages
-            .map(x => {
-                let line = ''
-                if (x.role === Role.USER) {
-                    line += "User : ";
-                } else {
-                  if (!x.content.startsWith("Bot : ")) {
-                    line += "Bot : ";
-                  }
+          let prompt = newMessages
+          .map(x => {
+              let line = ''
+              if (x.role === Role.USER) {
+                  line += "User : ";
+              } else {
+                if (!x.content.startsWith("Bot : ")) {
+                  line += "Bot : ";
                 }
-                line += x.content;
-                line += '\n\n';
-                return line;
-            })
-            .join("");
-            
-            console.log(prompt);
-            setGenerating(true);
+              }
+              line += x.content;
+              line += '\n\n';
+              return line;
+          })
+          .join("");
+          
+          console.log(prompt);
+          setGenerating(true);
 
-            const _cancel_callback = apiContext.Inference.textCompletionRequest({
-            prompt: prompt,
-            models: modelsStateContext.map((modelState) => {
-                if(modelState.selected) {
-                    return modelState
-                    }
-                }).filter(Boolean)
-            })
+          const _cancel_callback = apiContext.Inference.textCompletionRequest({
+          prompt: prompt,
+          models: modelsStateContext.map((modelState) => {
+              if(modelState.selected) {
+                  return modelState
+                  }
+              }).filter(Boolean)
+          })
 
-            cancel_callback.current = _cancel_callback
-        }
+          cancel_callback.current = _cancel_callback
+        
     }
 
     const clearContext = () => {
@@ -167,6 +177,7 @@ export default function Chat() {
                 data[Object.keys(data)[0]].forEach(x => {
                     currentMessage.content += x.message;
                 });
+                currentMessage.date = new Date();
                 _setChatContext({messages:newMessages})
 
             break;
@@ -253,7 +264,21 @@ export default function Chat() {
                     >
                         {
                             chatContext.messages.map(x => {
-                                return <ChatMessage role = {x.role} content = {x.content} />
+                                return <ChatMessage 
+                                  role = {x.role} 
+                                  content = {x.content} 
+                                  date = {x.date}
+                                  generating = {generating}
+                                  updateMessageCallback={(newVal: string) => {
+                                    x.content = newVal
+                                    _setChatContext({messages:chatContext.messages})
+                                  }}
+                                  deleteMessageCallback={(e) => {
+                                    _setChatContext({
+                                      messages:chatContext.messages.filter(message => message !== x)
+                                    })
+                                  }}  
+                                />
                             })    
                         }
                     </div>
