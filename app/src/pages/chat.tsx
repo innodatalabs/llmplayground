@@ -1,11 +1,13 @@
-import { Loader2, ClipboardCopy } from "lucide-react";
+import { Loader2, ClipboardCopy, Settings, X, History } from "lucide-react";
 import React, { useContext, useEffect, useRef, useState } from "react";
 import { APIContext, ChatContext, ModelsStateContext } from "../app";
 import NavBar from "../components/navbar";
 import ParametersSidePanel from "../components/parameters-side-panel";
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "../components/ui/alert-dialog";
 import { Button } from "../components/ui/button";
+import { useToast } from "../hooks/ui/use-toast";
 import { ChatMessage } from "./chat/chatmessage";
+import { Convos } from "./chat/convos";
 
 export enum Role {
     USER = "user",
@@ -18,8 +20,14 @@ export interface ChatMessage {
   date: Date
 }
 
+export interface Convo {
+  messages: ChatMessage[];
+  name: String;
+}
+
 const CustomAlertDialogue = ({dialog}) => {
     const [openDialog, setOpenDialog] = React.useState<boolean>(false)
+
     const [_dialogue, _setDialogue] = React.useState<any>({
       title: "",
       message: ""
@@ -54,16 +62,19 @@ const CustomAlertDialogue = ({dialog}) => {
 
 export default function Chat() {
     const apiContext = useContext(APIContext)
-    const {chatContext, _setChatContext} = useContext(ChatContext)
-    const parameterSidebar = (<ParametersSidePanel showModelDropdown={true} showModelList ={false} />)
+    const {chatContext, setChatContext} = useContext(ChatContext)
+    const [paramsVisible, setParamsVisible] = React.useState<boolean>(true);
+    const parameterSidebar = (<ParametersSidePanel showModelDropdown={true} showModelList ={false} setParamsVisible = {setParamsVisible}/>)
     const [textAreaVal, setTextAreaVal] = useState(''); // Declare a state variable...
     const {modelsStateContext} = useContext(ModelsStateContext)
     const cancel_callback = React.useRef<any>(null)
     const scrollRef = useRef(null)
 
+    const { toast } = useToast()
+
+    const [convosVisible, setConvosVisible] = React.useState<boolean>(true);
 
     const [generating, setGenerating] = React.useState<boolean>(false);
-
 
     const [dialog, showDialog] = React.useState({
       title: "",
@@ -89,22 +100,24 @@ export default function Chat() {
             return;
         }
         if (!modelsStateContext.find(x => x.selected)) {
-            alert("Select a model");
-            return;
+          showDialog({
+            title: "No model selected",
+            message: "Please select a model",
+          })
+          return;
         }
 
 
-        let newMessages : ChatMessage[] = [...chatContext.messages];
+        //let newMessages : ChatMessage[] = [...chatContext.conversations[chatContext.activeConversation].messages];
+        let newMessages = chatContext.convos[chatContext.activeConvo].messages;
 
         if (!!textAreaVal && (textAreaVal.trim().length > 0)) {
-            newMessages = [...chatContext.messages, {
+            newMessages = [...chatContext.convos[chatContext.activeConvo].messages, {
                 role: Role.USER,
                 content: textAreaVal,
                 date: new Date()
             }]
-            _setChatContext({
-                messages : newMessages
-            })
+            updateMessages(newMessages);
             setTextAreaVal('');
           } 
 
@@ -140,14 +153,26 @@ export default function Chat() {
         
     }
 
+    const updateMessages = (newMessages: ChatMessage[]) => {
+      let newConvos = [...chatContext.convos];
+      newConvos[chatContext.activeConvo].messages = newMessages
+      setChatContext({
+        ...chatContext,
+        convos : newConvos
+      })
+    }
+
     const clearContext = () => {
-        chatContext.messages.splice();
-        _setChatContext({
-            messages : []
-        })
+      updateMessages([]);
+        // chatContext.messages.splice();
+        // setChatContext({
+        //     messages : []
+        // })
     }
 
     useEffect(() => {
+        let convo = chatContext.convos[chatContext.activeConvo];
+
         if (scrollRef.current) {
             const scrollEl = scrollRef.current
             scrollEl.scrollTop = scrollEl.scrollHeight - scrollEl.clientHeight
@@ -165,8 +190,8 @@ export default function Chat() {
             break;
     
             case "completion":
-                let currentMessage = chatContext.messages[chatContext.messages.length-1];
-                let newMessages = [...chatContext.messages];
+                let currentMessage = convo.messages[convo.messages.length-1];
+                let newMessages = [...convo.messages];
                 if (currentMessage.role === Role.USER) {
                     currentMessage = {
                         role: Role.ASSISTANT,
@@ -178,7 +203,8 @@ export default function Chat() {
                     currentMessage.content += x.message;
                 });
                 currentMessage.date = new Date();
-                _setChatContext({messages:newMessages})
+                updateMessages(newMessages);
+                //setChatContext({messages:newMessages})
 
             break;
     
@@ -236,7 +262,7 @@ export default function Chat() {
         return () => {
           apiContext.Inference.unsubscribeTextCompletion(completionCallback);
         };
-    }, [chatContext.messages]);
+    }, [chatContext.convos]);
 
     return (
     <div className="flex flex-col h-full">
@@ -251,11 +277,30 @@ export default function Chat() {
       <CustomAlertDialogue dialog = {dialog} />
 
       <div className="flex flex-grow flex-col font-display min-h-0 min-w-0 ml-5">
-        <div className="flex flex-row space-x-4 flex-grow mr-5 min-h-0 min-w-0">
 
+        <div className="flex flex-row space-x-4 flex-grow min-h-0 min-w-0">
+            <div className="convos-panel-container">
+              {!convosVisible && <Button
+                className="convos-button"
+                onClick={(e) => {
+                  setConvosVisible(!convosVisible);
+                }}
+              ><History></History></Button>}
+              {convosVisible && <Button
+                className="close-convos-button"
+                onClick={(e) => {
+                  setConvosVisible(!convosVisible);
+                }}
+              ><X></X></Button>}
+              {convosVisible && 
+                <div>
+                  <Convos />
+                </div>}
+            </div>
             <div
                 id=""
-                className="flex flex-col grow basis-auto lg:max-w-[calc(100%-266px)]"
+                className="flex flex-col grow basis-auto"
+                style={{flex:1}}
             >
                 <div className="chat-mainarea">
                     <div 
@@ -263,7 +308,7 @@ export default function Chat() {
                         ref={scrollRef}
                     >
                         {
-                            chatContext.messages.map(x => {
+                            chatContext.convos[chatContext.activeConvo].messages.map(x => {
                                 return <ChatMessage 
                                   role = {x.role} 
                                   content = {x.content} 
@@ -271,12 +316,17 @@ export default function Chat() {
                                   generating = {generating}
                                   updateMessageCallback={(newVal: string) => {
                                     x.content = newVal
-                                    _setChatContext({messages:chatContext.messages})
+                                    updateMessages(chatContext.convos[chatContext.activeConvo].messages);
+                                    //setChatContext({messages:chatContext.messages})
                                   }}
                                   deleteMessageCallback={(e) => {
-                                    _setChatContext({
+                                    updateMessages(chatContext.convos[chatContext.activeConvo].messages
+                                      .filter(message => message !== x)
+                                    );
+
+                                    /*setChatContext({
                                       messages:chatContext.messages.filter(message => message !== x)
-                                    })
+                                    })*/
                                   }}  
                                 />
                             })    
@@ -307,7 +357,7 @@ export default function Chat() {
                             variant="subtle"
                             className="inline-flex items-center mt-4 text-sm font-medium text-center"
                             onClick={e => clearContext()}
-                            disabled={chatContext.messages.length === 0}
+                            disabled={chatContext.convos[chatContext.activeConvo].messages.length === 0}
                             >
                                 Clear
                         </Button>
@@ -329,9 +379,29 @@ export default function Chat() {
                 </div>
             </div>
             
-            <div className="hidden p-1 grow-0 shrink-0 basis-auto lg:w-[250px] overflow-auto lg:block">
-                    {parameterSidebar}
-            </div>
+            {<div className="hidden p-1 grow-0 shrink-0 basis-auto lg:block settings-container">
+              {!paramsVisible && <Button
+                className="settings-button"
+                onClick={(e) => {
+                  setParamsVisible(!paramsVisible);
+                }}
+              >
+                <Settings></Settings>
+              </Button>}
+              {paramsVisible && <Button
+                className="close-settings-button"
+                onClick={(e) => {
+                  setParamsVisible(!paramsVisible);
+                }}
+              >
+                <X></X>
+              </Button>}
+              {paramsVisible && 
+              <div className="lg:w-[230px]">
+                {parameterSidebar}
+              </div>
+              }
+            </div>}
             </div>
         </div>
     </div>

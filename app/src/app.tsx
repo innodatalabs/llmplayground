@@ -62,6 +62,11 @@ const DEFAULT_CONTEXTS = {
     chat:{
       modelsState: [],
       messages: [],
+      convos: [{
+        name:"untitled chat",
+        messages:[]
+      }],
+      activeConvo: 0,
       parameters: {
         ...DEFAULT_PARAMETERS_STATE,
         selectAllModels: false,
@@ -91,8 +96,8 @@ try {
   if (!SETTINGS.models) {
     SETTINGS.models = DEFAULT_CONTEXTS.MODELS;
   }
-  if (!SETTINGS.pages.chat.messages) {
-    SETTINGS.pages.chat.messages = []
+  if (!SETTINGS.pages.chat.convos) {
+    SETTINGS.pages.chat.convos = []
   }
 }
 
@@ -373,10 +378,7 @@ const PlaygroundContextWrapper = ({page, children}) => {
   let [modelsStateContext, _setModelsStateContext] = React.useState(DEFAULT_CONTEXTS.PAGES[page].modelsState);
   const [modelsContext, _setModelsContext] = React.useState(DEFAULT_CONTEXTS.MODELS);
   const [historyContext, _setHistoryContext] = React.useState(DEFAULT_CONTEXTS.PAGES[page].history);
-  const [chatContext, _setChatContext] = React.useState(
-  {
-    messages: []
-  })
+  const [chatContext, _setChatContext] = React.useState(DEFAULT_CONTEXTS.PAGES[page]);
 
   /* Temporary fix for models that have been purged remotely but are still cached locally */
   for(const {name} of modelsStateContext) {
@@ -484,7 +486,7 @@ const PlaygroundContextWrapper = ({page, children}) => {
     setModelsStateContext(PAGE_MODELS_STATE)
   }
 
-  const debouncedSettingsSave = useDebounce(saveSettings, 3000);
+  const debouncedSettingsSave = useDebounce(saveSettings, 1000);
 
   const setEditorContext = (newEditorContext, immediate=false) => {
     SETTINGS.pages[page].editor = {...SETTINGS.pages[page].editor, ...newEditorContext};
@@ -512,6 +514,13 @@ const PlaygroundContextWrapper = ({page, children}) => {
     
     debouncedSettingsSave()
     _setModelsContext(newModels);
+  }
+
+  const setChatContext = (newContext) => {
+    SETTINGS.pages["chat"].convos = newContext.convos;
+    SETTINGS.pages["chat"].activeConvo = newContext.activeConvo;
+    debouncedSettingsSave()
+    _setChatContext(newContext)
   }
 
   const setModelsStateContext = (newModelsState) => {
@@ -614,7 +623,7 @@ const PlaygroundContextWrapper = ({page, children}) => {
         <ParametersContext.Provider value = {{parametersContext, setParametersContext}}>
           <ModelsContext.Provider value = {{modelsContext, setModelsContext}}>
             <ModelsStateContext.Provider value = {{modelsStateContext, setModelsStateContext}}>
-              <ChatContext.Provider value = {{chatContext, _setChatContext}}>
+              <ChatContext.Provider value = {{chatContext, setChatContext}}>
                 {children}
               </ChatContext.Provider>
             </ModelsStateContext.Provider>

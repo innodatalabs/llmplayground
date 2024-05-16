@@ -285,3 +285,107 @@ html, body, #app {
   outline: none !important;
   box-shadow:none !important;
 }
+
+.settings-button {
+  position:absolute;
+  right: 5px;
+  top:-6px;
+  height: 25px;
+  width: 25px;
+  color:white;
+  padding:0px;
+}
+
+.settings-container {
+  position:relative;
+  padding-right:25px;
+  padding-top:10px;
+}
+
+.close-settings-button {
+  position: absolute;
+  right: 5px;
+  top: -6px;
+  height: 25px;
+  width: 25px;
+  padding:0px;
+}
+
+.convos-panel-container {
+  position:relative;
+  border-right:1pt solid #e5e7eb;
+  margin-top:-12px;
+  padding-top:8px;
+  min-width: 16px;
+}
+
+.convos-button {
+  position:absolute;
+  left: -15px;
+  top:6px;
+  height: 25px;
+  width: 25px;
+  color:white;
+  padding:0px;
+}
+
+.close-convos-button {
+  position: absolute;
+  right: 5px;
+  top: 6px;
+  height: 25px;
+  width: 25px;
+  padding:0px;
+}
+
+.convos-container {
+  margin-top: -17px;
+  margin-left: -12px;
+}
+
+.convos-list {
+  margin-top:15px;
+  margin-left:3px;
+}
+
+.convo-entry {
+  padding:4px 7px;
+  margin-right:8px;
+  border-radius:3px;
+  position:relative;
+}
+
+.convo-entry-contextMenu button {
+  height: 20px;
+  width: 20px;
+  padding:2px;
+}
+
+.convo-entry.selected {
+  background-color: rgb(217, 217, 217) !important;
+
+}
+
+.convo-entry:hover {
+  background-color: rgba(16, 185, 129, 0.2);
+  cursor:pointer;
+}
+
+.convo-entry-contextMenu {
+  display: none;
+  position:absolute;
+  right:13px;
+  top:6px;
+}
+
+.convo-entry:hover .convo-entry-contextMenu {
+  display: flex;
+}
+
+.convo-entry-wrapper {
+  position:Relative;
+}
+
+.convo-entry-wrapper:hover .convo-entry-contextMenu {
+  display: flex;
+}
