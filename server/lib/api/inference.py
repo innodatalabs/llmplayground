@@ -34,7 +34,12 @@ def stream_inference():
         return create_response_message("Invalid request", 400)
 
     request_uuid = str(uuid.uuid4())
-    prompt = data['prompt']
+    prompt = None
+    messages = None
+    if 'prompt' in data:
+        prompt = data['prompt']
+    if 'messages' in data:
+        messages = data['messages']
     models = data['models']
 
     SSE_MANAGER = global_state.get_sse_manager()
@@ -43,7 +48,7 @@ def stream_inference():
     
     announcer = InferenceAnnouncer(sse_topic)
 
-    all_tasks = [task for task in (create_inference_request(model, storage, prompt, request_uuid) for model in models) if task is not None]
+    all_tasks = [task for task in (create_inference_request(model, storage, prompt, request_uuid, messages) for model in models) if task is not None]
 
     if not all_tasks:
         return create_response_message("Invalid Request", 400)
@@ -54,9 +59,17 @@ def stream_inference():
     return stream_response(global_state, request_uuid)
 
 def is_valid_request_data(data):
-    return isinstance(data['prompt'], str) and isinstance(data['models'], list)
+    if ('prompt' not in data and 'messages' not in data):
+        return False
+    if ('models' not in data or not isinstance(data['models'], list)):
+        return False
+    if ('prompt' in data and not isinstance(data['prompt'], str)):
+        return False
+    if ('messages' in data and not isinstance(data['messages'], list)):
+        return False
+    return True
 
-def create_inference_request(model, storage, prompt, request_uuid):
+def create_inference_request(model, storage, prompt, request_uuid, messages):
     model_name, provider_name, model_tag, parameters = extract_model_data(model)
     model_name = model_name.removeprefix(f"{provider_name}:")
     provider = next((provider for provider in storage.get_providers() if provider.name == provider_name), None)
@@ -65,7 +78,7 @@ def create_inference_request(model, storage, prompt, request_uuid):
     
     if validate_parameters(provider.get_model(model_name), parameters):
         return InferenceRequest(uuid=request_uuid, model_name=model_name, model_tag=model_tag,
-            model_provider=provider_name, model_parameters=parameters, prompt=prompt
+            model_provider=provider_name, model_parameters=parameters, prompt=prompt, messages = messages
         )
 
     return None

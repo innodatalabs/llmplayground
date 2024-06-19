@@ -14,7 +14,7 @@ import boto3
 from aleph_alpha_client import Client as aleph_client, CompletionRequest, Prompt
 from datetime import datetime
 from dataclasses import dataclass
-from typing import Callable, Union
+from typing import Callable, Union, List, Optional
 from .huggingface.hf import HFInference
 from botocore.config import Config
 
@@ -32,6 +32,11 @@ class ProviderDetails:
     version_key: str
 
 @dataclass
+class InferenceMessage:
+    role: str
+    content: str
+
+@dataclass
 class InferenceRequest:
     '''
     Args:
@@ -47,7 +52,8 @@ class InferenceRequest:
     model_tag: str
     model_provider: str
     model_parameters: dict
-    prompt: str
+    prompt: Optional[str] = None
+    messages: Optional[List[InferenceMessage]] = None
 
 @dataclass
 class ProablityDistribution:
@@ -201,6 +207,36 @@ class InferenceManager:
             announcer.announce(infer_result, event="status")
             logger.info(f"Completed inference for {inference_request.model_name} on {inference_request.model_provider}")
     
+    def convert_to_openai_schema(source):
+        # Iterate over each message in the source object
+        for message in source:
+            # Create a new content list to hold the converted content
+            new_content = []
+
+            # Add the text content to the new content list
+            new_content.append({
+                "type": "text",
+                "text": message["content"]
+            })
+
+            # Add each attachment as a new item in the content list
+            for attachment in message.get("attachments", []):
+                new_content.append({
+                    "type": "image_url",
+                    "image_url": {
+                        "url": attachment
+                    }
+                })
+            
+            # Replace the old content with the new content
+            message["content"] = new_content
+            
+            # Remove the attachments key from the message
+            if "attachments" in message:
+                del message["attachments"]
+
+        return source
+
     def __openai_chat_generation__(self, provider_details: ProviderDetails, inference_request: InferenceRequest, announcer):
         openai.api_key = provider_details.api_key
 
@@ -211,12 +247,22 @@ class InferenceManager:
         else:
             system_content = f"You are ChatGPT, a large language model trained by OpenAI. Answer as concisely as possible. Knowledge cutoff: 2021-09-01 Current date: {current_date}"
 
-        response = openai.ChatCompletion.create(
-             model=inference_request.model_name,
-             messages = [
-                {"role": "system", "content": system_content},
+        apiMessages = inference_request.messages
+        if (apiMessages is None):
+            apiMessages = [
                 {"role": "user", "content": inference_request.prompt},
-            ],
+            ]
+
+        if not any(message['role'] == "system" for message in apiMessages):
+            apiMessages.insert(0, {"role": "system", "content": system_content})
+
+        InferenceManager.convert_to_openai_schema(apiMessages)
+
+        logger.info(apiMessages)
+
+        response = openai.ChatCompletion.create(
+            model=inference_request.model_name,
+            messages = apiMessages,
             temperature=inference_request.model_parameters['temperature'],
             max_tokens=inference_request.model_parameters['maximumLength'],
             top_p=inference_request.model_parameters['topP'],
@@ -329,7 +375,7 @@ class InferenceManager:
 
     def openai_text_generation(self, provider_details: ProviderDetails, inference_request: InferenceRequest, announcer):
         # TODO: Add a meta field to the inference so we know when a model is chat vs text
-        if inference_request.model_name in ["gpt-3.5-turbo", "gpt-4"]:
+        if inference_request.model_name in ["gpt-3.5-turbo", "gpt-4", "gpt-4o"]:
             self.__error_handler__(self.__openai_chat_generation__, provider_details, inference_request, announcer)
         else:
             self.__error_handler__(self.__openai_text_generation__, provider_details, inference_request, announcer)
@@ -681,6 +727,13 @@ class InferenceManager:
         access_key = os.environ.get("AWS_ACCESS_KEY_ID")
         secret = os.environ.get("AWS_SECRET_ACCESS_KEY")
 
+        def convert_role(role):
+            if role == "user":
+                return "User"
+            else:
+                return "Bot"
+
+        single_prompt =  "\n".join(f'{convert_role(entry["role"])}: {entry["content"]}' for entry in inference_request.messages if entry["role"] != "system")
         infer_response = None
 
         if access_key is not None and secret is not None:
@@ -694,7 +747,7 @@ class InferenceManager:
             ) 
             body = json.dumps( 
                 { 
-                    "inputText": inference_request.prompt, 
+                    "inputText": single_prompt, 
                     "textGenerationConfig": {
                         "maxTokenCount": inference_request.model_parameters['maximumLength'],
                         "temperature": inference_request.model_parameters['temperature'],

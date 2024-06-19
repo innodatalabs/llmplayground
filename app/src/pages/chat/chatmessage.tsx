@@ -2,12 +2,14 @@ import { ClipboardCopy, Edit, Trash } from "lucide-react";
 import { Role } from "../chat"
 import { useToast } from "../../hooks/ui/use-toast"
 import { Button } from "../../components/ui/button"
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import moment from 'moment'
+import { openDB } from 'idb';
 
 export const ChatMessage = ({
     role, 
     content, 
+    images,
     generating,
     date,
     updateMessageCallback,
@@ -15,8 +17,30 @@ export const ChatMessage = ({
 }) => {
     let roleClass = (role === Role.USER ? "user" : "assistant")
     const [editing, setEditing] = useState(false);
-
     const { toast } = useToast()
+    const [imageData, setImageData] = useState([]);
+
+    useEffect(() => {
+        const fetchImages = async () => {
+          const db = await openDB('llmplayground-images', 1);
+          const tx = db.transaction('images', 'readonly');
+          const store = tx.objectStore('images');
+          const imagePromises = images.map(id => store.get(id));
+    
+          Promise.all(imagePromises)
+            .then(images => {
+              setImageData(images.filter(image => image !== undefined));
+            })
+            .catch(error => {
+              console.error('Error fetching images from IndexedDB:', error);
+            });
+        };
+        if (images && images.length > 0) {
+            fetchImages();
+        } else {
+            setImageData([]);
+        }
+      }, [images]);
 
     const copyToClipboard = () => {
         navigator.clipboard.writeText(content);
@@ -32,6 +56,13 @@ export const ChatMessage = ({
                 {date && <span className="chat-message-date">{moment(date).format("h:mm:ss")}</span>}
             </div>
             {!editing && <div className={"chat-message-content " + roleClass}>
+                {
+                    (!!imageData && imageData.length > 0) && <div className="images-container">
+                        {imageData.map((image, index) => (
+                            <img key={index} src={image.preview} alt="preview" style={{ maxWidth: '300px', maxHeight: '250px', margin: '10px' }} />
+                        ))}
+                </div>
+                }
                 {content}
             </div>}
             {editing && <div className={roleClass}>

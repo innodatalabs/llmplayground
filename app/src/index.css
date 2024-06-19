@@ -389,3 +389,25 @@ html, body, #app {
 .convo-entry-wrapper:hover .convo-entry-contextMenu {
   display: flex;
 }
+
+.chat-systemmessage {
+  display:flex;
+  align-items: center;
+  margin-top:-20px;
+  margin-bottom:10px;
+}
+
+.chat-systemmessage span {
+  margin-right:10px;
+}
+
+.images-container {
+  display:flex;
+  gap:10px;
+  margin-bottom:10px;
+}
+
+.images-preview {
+  max-width:110px;
+  max-height:100px;
+}
