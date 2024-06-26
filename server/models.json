@@ -857,11 +857,11 @@
     },
     "models": {}
   },
-  "amazon": {
+  "amazon_bedrock": {
     "requiresAPIKey": false,
     "remoteInference": true,
     "models": {
-      "AGI": {
+      "amazon.titan-text-premier-v1:0": {
         "enabled": false,
         "status": "ready",
         "capabilities": [
@@ -870,6 +870,54 @@
         "parameters": {
           "temperature": {
             "value": 0.9,
+            "range": [
+              0,
+              1
+            ]
+          },
+          "maximumLength": {
+            "value": 3072,
+            "range": [
+              50,
+              8096
+            ]
+          },
+          "topP": {
+            "value": 1,
+            "range": [
+              0.1,
+              1
+            ]
+          },
+          "presencePenalty": {
+            "value": 0,
+            "range": [
+              0,
+              1
+            ]
+          },
+          "frequencyPenalty": {
+            "value": 0,
+            "range": [
+              0,
+              1
+            ]
+          },
+          "stopSequences": {
+            "value": [],
+            "range": []
+          }
+        }
+      },
+        "meta.llama3-70b-instruct-v1:0": {
+        "enabled": false,
+        "status": "ready",
+        "capabilities": [
+          "logprobs"
+        ],
+        "parameters": {
+          "temperature": {
+            "value": 1.0,
             "range": [
               0,
               1

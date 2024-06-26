@@ -718,6 +718,45 @@ class InferenceManager:
     
 
     def __amazon_text_generation__(self, provider_details: ProviderDetails, inference_request: InferenceRequest, announcer):
+        print(inference_request)
+    
+        def build_prompt(inference_request):
+            if inference_request.model_name.startswith("amazon.titan"):
+                def convert_role(role):
+                    if role == "user":
+                        return "User"
+                    else:
+                        return "Bot"
+                return "\n".join(f'{convert_role(entry["role"])}: {entry["content"]}' for entry in inference_request.messages if entry["role"] != "system")
+            elif inference_request.model_name.startswith("meta.llama"):
+                if inference_request.prompt is not None:
+                    single_prompt = inference_request.prompt
+                else:
+                    single_prompt = '<|begin_of_text|>'
+                    single_prompt += "\n".join(f'<|start_header_id|>{entry["role"]}<|end_header_id|>\n\n{entry["content"]}<|eot_id|>' for entry in inference_request.messages)
+                    if inference_request.messages[-1]["role"] != "assistant":
+                        single_prompt += "\n<|start_header_id|>assistant<|end_header_id|>\n"
+                return single_prompt
+
+        def build_request(inference_request) :
+            if inference_request.model_name.startswith("amazon.titan"):
+                return json.dumps({ 
+                    "inputText": build_prompt(inference_request), 
+                    "textGenerationConfig": {
+                        "maxTokenCount": inference_request.model_parameters['maximumLength'],
+                        "temperature": inference_request.model_parameters['temperature'],
+                        "topP": inference_request.model_parameters['topP']
+                    }
+                }) 
+            elif inference_request.model_name.startswith("meta.llama"):
+                return json.dumps({ 
+                    "prompt": build_prompt(inference_request), 
+                    "max_gen_len" : inference_request.model_parameters['maximumLength'],
+                    "temperature" : inference_request.model_parameters['temperature'],
+                    "top_p" : inference_request.model_parameters['topP']
+                }) 
+
+
 
         cancelled = False
         logger.info(f"Starting inference for {inference_request.uuid} - {inference_request.model_name}")
@@ -727,13 +766,7 @@ class InferenceManager:
         access_key = os.environ.get("AWS_ACCESS_KEY_ID")
         secret = os.environ.get("AWS_SECRET_ACCESS_KEY")
 
-        def convert_role(role):
-            if role == "user":
-                return "User"
-            else:
-                return "Bot"
 
-        single_prompt =  "\n".join(f'{convert_role(entry["role"])}: {entry["content"]}' for entry in inference_request.messages if entry["role"] != "system")
         infer_response = None
 
         if access_key is not None and secret is not None:
@@ -745,23 +778,15 @@ class InferenceManager:
                 endpoint_url="https://bedrock-runtime.us-west-2.amazonaws.com", 
                 config=config, 
             ) 
-            body = json.dumps( 
-                { 
-                    "inputText": single_prompt, 
-                    "textGenerationConfig": {
-                        "maxTokenCount": inference_request.model_parameters['maximumLength'],
-                        "temperature": inference_request.model_parameters['temperature'],
-                        "topP": inference_request.model_parameters['topP']
-                    }
-                } 
-            ) 
+            body = build_request(inference_request)
+            print(body)
         
             accept = "application/json" 
             contentType = "application/json" 
             try :
                
                 response = bedrock.invoke_model_with_response_stream( 
-                    body=body, modelId="amazon.titan-text-premier-v1:0", accept=accept, contentType=contentType 
+                    body=body, modelId=inference_request.model_name, accept=accept, contentType=contentType 
                 ) 
                 stream = response.get('body')
                 if stream:
@@ -771,7 +796,14 @@ class InferenceManager:
                         chunk = event.get('chunk')
                         if chunk:
                             chunk = json.loads(chunk.get('bytes').decode())
-                            token = chunk['outputText']
+                            
+                            print(chunk)
+
+                            if inference_request.model_name.startswith("amazon.titan"):
+                                token = chunk['outputText']
+                            elif inference_request.model_name.startswith("meta.llama"):
+                                token = chunk['generation']
+
                             print(token)
                             infer_response = InferenceResult(
                                 uuid=inference_request.uuid,

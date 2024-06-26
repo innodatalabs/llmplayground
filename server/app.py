@@ -312,7 +312,7 @@ class GlobalStateManager:
             return self.inference_manager.anthropic_text_generation(provider_details, inference_request, announcer)
         elif inference_request.model_provider == "aleph-alpha":
             return self.inference_manager.aleph_alpha_text_generation(provider_details, inference_request, announcer)
-        elif inference_request.model_provider == "amazon":
+        elif inference_request.model_provider == "amazon_bedrock":
             return self.inference_manager.amazon_text_generation(provider_details, inference_request, announcer)
         else:
             raise Exception(

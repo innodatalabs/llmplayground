@@ -6,7 +6,7 @@ import appConfig from "../../config"
 export default function NavBar({ tab, children }: any) {
   const { user, logout } = useAuth0();
 
-  const menuOptions = ["chat"]
+  const menuOptions = ["chat", "promptgen"]
 
   if (user?.isAdmin) {
       menuOptions.push("settings");

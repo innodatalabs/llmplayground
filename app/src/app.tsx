@@ -15,6 +15,7 @@ import { useToast } from "./hooks/ui/use-toast"
 import { Auth0Provider } from "@auth0/auth0-react"
 import Chat, { ChatMessage, Role } from "./pages/chat"
 import { ChatMessage } from "./pages/chat/chatmessage"
+import Promptgen from "./pages/promptgen"
 
 const DEFAULT_PARAMETERS_STATE = {
   temperature: 1.0,
@@ -73,6 +74,20 @@ const DEFAULT_CONTEXTS = {
         showParametersTable: false
       }
     },
+    promptgen:{
+      modelsState: [],
+      intents: [{
+        intent:"[No Intent]",
+        prompt:"",
+        generations:[]
+      }],
+      activeIntent: 0,
+      parameters: {
+        ...DEFAULT_PARAMETERS_STATE,
+        selectAllModels: false,
+        showParametersTable: false
+      }
+    },
   },
   MODELS: [],
 }
@@ -92,6 +107,9 @@ try {
     if (!SETTINGS.pages.chat) {
       SETTINGS.pages.chat = DEFAULT_CONTEXTS.PAGES.chat;
     }
+    if (!SETTINGS.pages.promptgen) {
+      SETTINGS.pages.promptgen = DEFAULT_CONTEXTS.PAGES.promptgen;
+    }
   }
   if (!SETTINGS.models) {
     SETTINGS.models = DEFAULT_CONTEXTS.MODELS;
@@ -103,9 +121,11 @@ try {
 
 DEFAULT_CONTEXTS.PAGES = SETTINGS.pages;
 DEFAULT_CONTEXTS.MODELS = SETTINGS.models;
+console.log(DEFAULT_CONTEXTS);
 
 export const APIContext = React.createContext({});
 export const ChatContext = React.createContext({});
+export const PromptGenContext = React.createContext({});
 export const EditorContext = React.createContext({});
 export const ModelsStateContext = React.createContext([]);
 export const ParametersContext = React.createContext({});
@@ -379,7 +399,8 @@ const PlaygroundContextWrapper = ({page, children}) => {
   let [modelsStateContext, _setModelsStateContext] = React.useState(DEFAULT_CONTEXTS.PAGES[page].modelsState);
   const [modelsContext, _setModelsContext] = React.useState(DEFAULT_CONTEXTS.MODELS);
   const [historyContext, _setHistoryContext] = React.useState(DEFAULT_CONTEXTS.PAGES[page].history);
-  const [chatContext, _setChatContext] = React.useState(DEFAULT_CONTEXTS.PAGES[page]);
+  const [chatContext, _setChatContext] = React.useState(DEFAULT_CONTEXTS.PAGES["chat"]);
+  const [promptgenContext, _setPromptgenContext] = React.useState(DEFAULT_CONTEXTS.PAGES["promptgen"]);
 
   /* Temporary fix for models that have been purged remotely but are still cached locally */
   for(const {name} of modelsStateContext) {
@@ -524,6 +545,13 @@ const PlaygroundContextWrapper = ({page, children}) => {
     _setChatContext(newContext)
   }
 
+  const setPromptgenContext = (newContext) => {
+    SETTINGS.pages["promptgen"].intents = newContext.intents;
+    SETTINGS.pages["promptgen"].activeIntents = newContext.activeIntents;
+    debouncedSettingsSave()
+    _setPromptgenContext(newContext)
+  }
+
   const setModelsStateContext = (newModelsState) => {
     SETTINGS.pages[page].modelsState = newModelsState;
     
@@ -625,7 +653,9 @@ const PlaygroundContextWrapper = ({page, children}) => {
           <ModelsContext.Provider value = {{modelsContext, setModelsContext}}>
             <ModelsStateContext.Provider value = {{modelsStateContext, setModelsStateContext}}>
               <ChatContext.Provider value = {{chatContext, setChatContext}}>
-                {children}
+                <PromptGenContext.Provider value = {{promptgenContext, setPromptgenContext}}>
+                  {children}
+                </PromptGenContext.Provider>
               </ChatContext.Provider>
             </ModelsStateContext.Provider>
           </ModelsContext.Provider>
@@ -668,6 +698,18 @@ function ProviderWithRoutes() {
           <APIContextWrapper>
             <PlaygroundContextWrapper key = "chat" page = "chat">
               <Chat/>
+              <Toaster />
+            </PlaygroundContextWrapper>
+          </APIContextWrapper>
+        }
+      />
+
+      <Route
+        path="/promptgen"
+        element={
+          <APIContextWrapper>
+            <PlaygroundContextWrapper key = "promptgen" page = "promptgen">
+              <Promptgen/>
               <Toaster />
             </PlaygroundContextWrapper>
           </APIContextWrapper>

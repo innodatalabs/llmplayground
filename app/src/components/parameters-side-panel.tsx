@@ -30,7 +30,7 @@ const modelProviders = {
   anthropic: "Anthropic",
   cohere: "co:here",
   openai: "OpenAI",
-  amazon: "amazon"
+  amazon_bedrock: "Amazon Bedrock",
 }
 
 const ParametersSidePanel = ({ showModelDropdown, showModelList }) => {

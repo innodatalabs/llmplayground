@@ -198,6 +198,16 @@ html, body, #app {
 
 }
 
+.promptgen-textarea {
+  width:100%;
+  border:1pt solid black;
+  border-radius:5pt;
+  padding:5px;
+  font-size:11pt;
+  line-height:11pt;
+  height:100px;
+}
+
 .chat-buttonarea {
   display:flex;
   gap:10px;
