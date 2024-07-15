@@ -31,6 +31,7 @@ const modelProviders = {
   cohere: "co:here",
   openai: "OpenAI",
   amazon_bedrock: "Amazon Bedrock",
+  contextual_ai: "Contextual AI"
 }
 
 const ParametersSidePanel = ({ showModelDropdown, showModelList }) => {

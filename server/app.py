@@ -314,6 +314,8 @@ class GlobalStateManager:
             return self.inference_manager.aleph_alpha_text_generation(provider_details, inference_request, announcer)
         elif inference_request.model_provider == "amazon_bedrock":
             return self.inference_manager.amazon_text_generation(provider_details, inference_request, announcer)
+        elif inference_request.model_provider == "contextual_ai":
+            return self.inference_manager.contextualai_text_generation(provider_details, inference_request, announcer)
         else:
             raise Exception(
                 f"Unknown model provider, {inference_request.model_provider}. Please add a generation function in InferenceManager or route in ModelManager.text_generation"

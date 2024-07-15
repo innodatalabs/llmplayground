@@ -10,6 +10,7 @@ import { useToast } from "../hooks/ui/use-toast";
 import { ChatMessage } from "./chat/chatmessage";
 import { Convos } from "./chat/convos";
 import { openDB } from 'idb';
+import AudioDisplay from "./chat/audiodisplay";
 
 export enum Role {
     USER = "user",
@@ -22,6 +23,13 @@ export interface ChatMessage {
   content: string,
   date: Date,
   images?: any[]
+  attachments?: Attachment[];
+}
+
+export interface Attachment {
+  id: string;
+  type: string;
+  payload: any;
 }
 
 export interface Convo {
@@ -73,8 +81,20 @@ export default function Chat() {
     const {modelsStateContext} = useContext(ModelsStateContext)
     const cancel_callback = React.useRef<any>(null)
     const scrollRef = useRef(null)
+    const silenceTimeout = useRef(null);
 
-    const [images, setImages] = useState([]);
+    const streamRef = useRef(null);
+    const processorRef = useRef(null);
+
+    const [recording, setRecording] = useState(false);
+
+    const [audioRms, setAudioRms] = useState(0); // Declare a state variable...
+    const [rmsThreshold, setRmsThreshold] = useState(30); // Declare a state variable...
+
+    const audioChunksRef = useRef([]);
+    const mediaRecorderRef = useRef(null);
+
+    const [uploadedFiles, setUploadedFiles] = useState([]);
 
     let convo = chatContext.convos[chatContext.activeConvo];
     let systemMessage : ChatMessage = convo.messages.find(x => x.role === Role.SYSTEM);;
@@ -97,31 +117,29 @@ export default function Chat() {
     useEffect(() => {
 
       const initDB = async () => {
-        const db = await openDB('llmplayground-images', 1, {
+        const db = await openDB('llmplayground-files', 1, {
           upgrade(db) {
-            db.createObjectStore('images', { keyPath: 'id', autoIncrement: true });
+            db.createObjectStore('files', { keyPath: 'id', autoIncrement: true });
           },
         });
 
-        // Load images from IndexedDB
-        const tx = db.transaction('images', 'readwrite');
-        const store = tx.objectStore('images');
+        // Load files from IndexedDB
+        const tx = db.transaction('files', 'readwrite');
+        const store = tx.objectStore('files');
 
-        let imageRefs = chatContext.convos
+        let fileRefs = chatContext.convos
           .flatMap(convo => convo.messages)
-          .flatMap(message => message.images)
+          .flatMap(message => message.attachments)
           .filter(x => !!x)
 
         const keys = await store.getAllKeys();
 
-        console.log(imageRefs);
-
         // Iterate through each key and check if it exists in imageRefs
         await Promise.all(keys.map(async key => {
           const data = await store.get(key);
-          const imageExists = imageRefs.some(ref => ref === data.id);
+          const fileExists = fileRefs.some(ref => ref.id === data.id);
 
-          if (!imageExists) {
+          if (!fileExists) {
             // Delete the image if it does not exist in imageRefs
             console.log("DELETING IMAGE WITH ID " + key);
             await store.delete(key);
@@ -133,6 +151,115 @@ export default function Chat() {
       };
       initDB();
     }, []);
+
+    useEffect(() => {
+      const startListening = async () => {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        streamRef.current = stream;
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const source = audioContext.createMediaStreamSource(stream);
+        const analyser = audioContext.createAnalyser();
+        const processor = audioContext.createScriptProcessor(1024, 1, 1);
+  
+        analyser.fftSize = 1024;
+        source.connect(analyser);
+        analyser.connect(processor);
+        processor.connect(audioContext.destination);
+        processorRef.current = processor;
+        setAudioProcessorCallback();
+      };
+  
+      //startListening();
+    }, []);
+
+    useEffect(() => {
+      setAudioProcessorCallback();
+    }, [rmsThreshold, recording, silenceTimeout.current]);
+
+    const setAudioProcessorCallback = () => {
+      if (!processorRef || !processorRef.current) {
+        return;
+      }
+      processorRef.current.onaudioprocess = (e) => {
+
+        const data = e.inputBuffer.getChannelData(0);
+        let rms = Math.sqrt(data.reduce((sum, val) => sum + val * val, 0) / data.length);
+        // For me this helps, have to test other mics or normalization methods.
+        rms = Math.min(1, rms * 5)
+        setAudioRms(rms);
+        const threshold = rmsThreshold / 100; // Adjust this threshold as needed
+
+        if (rms > threshold) {
+          startRecording();
+          if (silenceTimeout.current) { 
+            clearTimeout(silenceTimeout.current);
+            silenceTimeout.current = null;
+          }
+
+        } else if (rms <= threshold && recording) {
+          console.log(silenceTimeout.current);
+          if (!silenceTimeout.current) {
+            silenceTimeout.current = setTimeout(stopRecording, 1000); // Adjust this timeout as needed
+          }
+        }
+      };
+    }
+
+    const startRecording = () => {
+      if (recording) {
+        return;
+      }
+      const stream = streamRef.current;
+      const mediaRecorder = new MediaRecorder(stream);
+  
+      mediaRecorder.ondataavailable = (event) => {
+        audioChunksRef.current.push(event.data);
+      };
+  
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
+        await saveAudio(audioBlob);
+        audioChunksRef.current = [];
+      };
+  
+      mediaRecorder.start();
+      mediaRecorderRef.current = mediaRecorder;
+
+      setRecording(true);
+    }
+
+    const stopRecording = () => {
+      mediaRecorderRef.current.stop();
+      setRecording(false);
+      clearTimeout(silenceTimeout.current);
+      silenceTimeout.current = null;
+    }
+
+    const saveAudio = async (blob: Blob) => {
+      // Function to convert blob to base64
+      const blobToDataURL = (blob) => {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      };
+
+      const audioUrl = await blobToDataURL(blob);
+
+      const db = await openDB('llmplayground-files', 1);
+      const tx = db.transaction('files', 'readwrite');
+      const store = tx.objectStore('files');
+
+      const id = await store.add({ type: blob.type, payload: audioUrl });
+      const newFile = {
+        id: id,
+        type: blob.type,
+        payload: audioUrl
+      }
+      setUploadedFiles(prevFiles => [...prevFiles, newFile]);
+    }
 
     const handleKeyup = (event) => {
 
@@ -146,65 +273,6 @@ export default function Chat() {
         cancel_callback.current()
       }
     }
-  
-
-    // const submitPrompt = () => {
-    //     if (generating) {
-    //         return;
-    //     }
-    //     if (!modelsStateContext.find(x => x.selected)) {
-    //       showDialog({
-    //         title: "No model selected",
-    //         message: "Please select a model",
-    //       })
-    //       return;
-    //     }
-
-
-    //     //let newMessages : ChatMessage[] = [...chatContext.conversations[chatContext.activeConversation].messages];
-    //     let newMessages = chatContext.convos[chatContext.activeConvo].messages;
-
-    //     if (!!textAreaVal && (textAreaVal.trim().length > 0)) {
-    //         newMessages = [...chatContext.convos[chatContext.activeConvo].messages, {
-    //             role: Role.USER,
-    //             content: textAreaVal,
-    //             date: new Date()
-    //         }]
-    //         updateMessages(newMessages);
-    //         setTextAreaVal('');
-    //       } 
-
-    //       let prompt = newMessages
-    //       .map(x => {
-    //           let line = ''
-    //           if (x.role === Role.USER) {
-    //               line += "User : ";
-    //           } else {
-    //             if (!x.content.startsWith("Bot : ")) {
-    //               line += "Bot : ";
-    //             }
-    //           }
-    //           line += x.content;
-    //           line += '\n\n';
-    //           return line;
-    //       })
-    //       .join("");
-          
-    //       console.log(prompt);
-    //       setGenerating(true);
-
-    //       const _cancel_callback = apiContext.Inference.textCompletionRequest({
-    //       prompt: prompt,
-    //       models: modelsStateContext.map((modelState) => {
-    //           if(modelState.selected) {
-    //               return modelState
-    //               }
-    //           }).filter(Boolean)
-    //       })
-
-    //       cancel_callback.current = _cancel_callback
-        
-    // }
 
     const submitPrompt = async () => {
       if (generating) {
@@ -222,12 +290,18 @@ export default function Chat() {
       //let newMessages : ChatMessage[] = [...chatContext.conversations[chatContext.activeConversation].messages];
       let newMessages : ChatMessage[] = chatContext.convos[chatContext.activeConvo].messages;
 
-      if ((!!textAreaVal && (textAreaVal.trim().length > 0)) || images.length > 0) {
+      if ((!!textAreaVal && (textAreaVal.trim().length > 0)) || uploadedFiles.length > 0) {
           newMessages = [...chatContext.convos[chatContext.activeConvo].messages, {
               role: Role.USER,
               content: textAreaVal,
               date: new Date(),
-              images: images.map(image => image.id)
+              attachments: uploadedFiles.map(file => {
+                return {
+                  type:file.type,
+                  id: file.id
+                }
+              })
+
           }]
           updateMessages(newMessages);
           setTextAreaVal('');
@@ -236,17 +310,20 @@ export default function Chat() {
         setGenerating(true);
 
 
-        const messagesWithImagesLoaded = await Promise.all(
+        const messagesWithAttachmentsLoaded = await Promise.all(
           newMessages.map(async (message) => {
             let attachments = undefined;
-            if (message.images && message.images.length > 0) {
+            if (message.attachments && message.attachments.length > 0) {
               attachments = await Promise.all(
-                message.images.map(async (imageId) => {
-                  const db = await openDB('llmplayground-images', 1);
-                  const tx = db.transaction('images', 'readonly');
-                  const store = tx.objectStore('images');
-                  const imageData = await store.get(imageId);
-                  return imageData.preview;
+                message.attachments.map(async (file) => {
+                  const db = await openDB('llmplayground-files', 1);
+                  const tx = db.transaction('files', 'readonly');
+                  const store = tx.objectStore('files');
+                  const fileData = await store.get(file.id);
+                  return {
+                    type: fileData.type,
+                    payload : fileData.payload
+                  };
                 })
               );
             }
@@ -258,10 +335,9 @@ export default function Chat() {
           })
         );
 
-        console.log(messagesWithImagesLoaded);
 
         const _cancel_callback = apiContext.Inference.textCompletionRequest({
-        messages:messagesWithImagesLoaded,
+        messages:messagesWithAttachmentsLoaded,
         models: modelsStateContext.map((modelState) => {
             if(modelState.selected) {
                 return modelState
@@ -270,7 +346,7 @@ export default function Chat() {
         })
 
         cancel_callback.current = _cancel_callback
-        setImages([]);      
+        setUploadedFiles([]);      
   }
 
 
@@ -308,46 +384,27 @@ export default function Chat() {
 
     const handleDrop = async (e) => {
       e.preventDefault();
-      const files = Array.from(e.dataTransfer.files).filter(file =>
-        file.type.startsWith('image/')
-      );
+      const files = Array.from(e.dataTransfer.files).filter(file => {
+        return file.type.startsWith('image/') || file.type.startsWith('audio/')
+      });
 
-      const newImages = await Promise.all(files.map(file => {
+
+      const newFiles = await Promise.all(files.map(file => {
         return new Promise((resolve, reject) => {
           const reader = new FileReader();
           reader.onload = async () => {
-            const db = await openDB('llmplayground-images', 1);
-            const tx = db.transaction('images', 'readwrite');
-            const store = tx.objectStore('images');
-            const id = await store.add({ preview: reader.result });
-            resolve({ id, preview: reader.result });
+            const db = await openDB('llmplayground-files', 1);
+            const tx = db.transaction('files', 'readwrite');
+            const store = tx.objectStore('files');
+            const id = await store.add({ type: file.type, payload: reader.result });
+            resolve({ id, type: file.type, payload: reader.result });
           };
           reader.onerror = error => reject(error);
           reader.readAsDataURL(file);
         });
       }));
-  
-      //setImageRefs(prevImageRefs => [...prevImageRefs, ...newImageRefs]);
-      setImages(prevImages => [...prevImages, ...newImages]);
-      /*e.preventDefault();
-      const files = Array.from(e.dataTransfer.files).filter(file =>
-        file.type.startsWith('image/')
-      );
-  
-      setImages(prevImages => [
-        ...prevImages,
-        ...files.map(file => Object.assign(file, {
-          preview: URL.createObjectURL(file)
-        }))
-      ]);
 
-      setTimeout(() => {
-        if (scrollRef.current) {
-          const scrollEl = scrollRef.current
-          scrollEl.scrollTop = scrollEl.scrollHeight - scrollEl.clientHeight
-        }
-      }, 10)
-  */
+      setUploadedFiles(prevFiles => [...prevFiles, ...newFiles]);
     };
 
     useEffect(() => {
@@ -507,7 +564,7 @@ export default function Chat() {
                                 return <ChatMessage 
                                   role = {x.role} 
                                   content = {x.content} 
-                                  images = {x.images}
+                                  files = {x.attachments}
                                   date = {x.date}
                                   generating = {generating}
                                   updateMessageCallback={(newVal: string) => {
@@ -533,9 +590,21 @@ export default function Chat() {
                       onDragOver={handleDragOver}
                     >
                         <div className={"images-container"}>
-                          {images.map((image, index) => (
-                            <img key={index} src={image.preview} alt="preview" className={"images-preview"} />
-                          ))}
+                          {uploadedFiles.map((file, index) => {
+                            if (file.type.startsWith('image/')) {
+                                return <img key={index} src={file.payload} alt="preview" className={"images-preview"} />
+                            }
+                            if (file.type.startsWith('audio/')) {
+                              return (
+                                  <div key={index} style={{ margin: '10px' }}>
+                                    <audio controls>
+                                      <source src={file.payload} type={file.type} />
+                                      Your browser does not support the audio element.
+                                    </audio>
+                                  </div>
+                                );
+                            }
+                         })}
                         </div>
                         <textarea
                             className="chat-textarea"
@@ -579,6 +648,14 @@ export default function Chat() {
                             Cancel Generation
                           </Button>
                         )}
+                        {/*<AudioDisplay
+                          volume={audioRms}
+                          threshold={rmsThreshold}
+                          recording={recording}
+                          onThresholdChange={setRmsThreshold}
+                        >
+
+                        </AudioDisplay>*/}
                     </div>
                 </div>
             </div>

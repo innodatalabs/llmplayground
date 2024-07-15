@@ -19,6 +19,6 @@
       "@/*": ["./*"]
     }
   },
-  "include": ["**/*.ts", "**/*.tsx"],
+  "include": ["**/*.ts", "**/*.tsx", "src/pages/chat/audiodisplay"],
   "exclude": ["node_modules"]
 }

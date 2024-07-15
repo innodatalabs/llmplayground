@@ -221,12 +221,13 @@ class InferenceManager:
 
             # Add each attachment as a new item in the content list
             for attachment in message.get("attachments", []):
-                new_content.append({
-                    "type": "image_url",
-                    "image_url": {
-                        "url": attachment
-                    }
-                })
+                if attachment["type"].startswith("image/"):
+                    new_content.append({
+                        "type": "image_url",
+                        "image_url": {
+                            "url": attachment["payload"]
+                        }
+                    })
             
             # Replace the old content with the new content
             message["content"] = new_content
@@ -828,3 +829,48 @@ class InferenceManager:
 
     def amazon_text_generation(self, provider_details: ProviderDetails, inference_request: InferenceRequest, announcer):
         self.__error_handler__(self.__amazon_text_generation__, provider_details, inference_request, announcer)
+
+    def __contextualai_text_generation__(self, provider_details: ProviderDetails, inference_request: InferenceRequest, announcer):
+        print(inference_request)
+
+        cancelled = False
+        logger.info(f"Starting inference for {inference_request.uuid} - {inference_request.model_name}")
+
+        WORKFLOW_ID = "7ae28c95-7dcb-4b9d-a2e2-99eae9c66056"
+
+        infer_response = None
+        headers = {
+            "Authorization": f"Bearer {provider_details.api_key}",
+            "Content-Type": "application/json",
+        }
+        endpoint = "https://api.app.contextual.ai/api/v0/chat"
+
+        prompt = next((message['content'] for message in inference_request.messages if message.get('role') == 'user'), None)
+
+        response = requests.request("POST", endpoint, headers=headers, data=json.dumps(
+            {
+                "prompt": prompt,
+                "stream": False,
+                "workflow_id": WORKFLOW_ID,
+            }
+        ))
+    
+        if response.status_code != 200:
+            print("Error: ", response.status_code)
+            raise Exception(response.json())
+        else: 
+            infer_response = InferenceResult(
+                uuid=inference_request.uuid,
+                model_name=inference_request.model_name,
+                model_tag=inference_request.model_tag,
+                model_provider=inference_request.model_provider,
+                token=response.json()["generation"],
+                probability=None,
+                top_n_distribution=None
+            )
+
+            if not announcer.announce(infer_response, event="infer"):
+                logger.info(f"Cancelled inference for {inference_request.uuid} - {inference_request.model_name}")
+
+    def contextualai_text_generation(self, provider_details: ProviderDetails, inference_request: InferenceRequest, announcer):
+        self.__error_handler__(self.__contextualai_text_generation__, provider_details, inference_request, announcer)

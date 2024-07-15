@@ -9,7 +9,7 @@ import { openDB } from 'idb';
 export const ChatMessage = ({
     role, 
     content, 
-    images,
+    files,
     generating,
     date,
     updateMessageCallback,
@@ -18,29 +18,30 @@ export const ChatMessage = ({
     let roleClass = (role === Role.USER ? "user" : "assistant")
     const [editing, setEditing] = useState(false);
     const { toast } = useToast()
-    const [imageData, setImageData] = useState([]);
+    const [fileData, setFileData] = useState([]);
 
     useEffect(() => {
         const fetchImages = async () => {
-          const db = await openDB('llmplayground-images', 1);
-          const tx = db.transaction('images', 'readonly');
-          const store = tx.objectStore('images');
-          const imagePromises = images.map(id => store.get(id));
+          const db = await openDB('llmplayground-files', 1);
+          const tx = db.transaction('files', 'readonly');
+          const store = tx.objectStore('files');
+          const filePromises = files.map(file => store.get(file.id));
     
-          Promise.all(imagePromises)
-            .then(images => {
-              setImageData(images.filter(image => image !== undefined));
+          Promise.all(filePromises)
+            .then(files => {
+                setFileData(files.filter(file => file !== undefined));
+                console.log(fileData);
             })
             .catch(error => {
               console.error('Error fetching images from IndexedDB:', error);
             });
         };
-        if (images && images.length > 0) {
+        if (files && files.length > 0) {
             fetchImages();
         } else {
-            setImageData([]);
+            setFileData([]);
         }
-      }, [images]);
+      }, [files]);
 
     const copyToClipboard = () => {
         navigator.clipboard.writeText(content);
@@ -57,10 +58,22 @@ export const ChatMessage = ({
             </div>
             {!editing && <div className={"chat-message-content " + roleClass}>
                 {
-                    (!!imageData && imageData.length > 0) && <div className="images-container">
-                        {imageData.map((image, index) => (
-                            <img key={index} src={image.preview} alt="preview" style={{ maxWidth: '300px', maxHeight: '250px', margin: '10px' }} />
-                        ))}
+                    (!!fileData && fileData.length > 0) && <div className="images-container">
+                        {fileData.map((file, index) => {
+                            if (file.type.startsWith('image/')) {
+                                return <img key={index} src={file.payload} alt="preview" style={{ maxWidth: '300px', maxHeight: '250px', margin: '10px' }} />
+                            }
+                            if (file.type.startsWith('audio/')) {
+                                return (
+                                    <div key={index} style={{ margin: '10px' }}>
+                                      <audio controls>
+                                        <source src={file.payload} type={file.type} />
+                                        Your browser does not support the audio element.
+                                      </audio>
+                                    </div>
+                                  );
+                            }
+                        })}
                 </div>
                 }
                 {content}
