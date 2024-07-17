@@ -963,7 +963,55 @@
     "requiresAPIKey": true,
     "remoteInference": true,
     "models": {
-      "clm": {
+      "clm_7ae28c95": {
+        "enabled": false,
+        "status": "ready",
+        "capabilities": [
+          "logprobs"
+        ],
+        "parameters": {
+          "temperature": {
+            "value": 0.9,
+            "range": [
+              0,
+              1
+            ]
+          },
+          "maximumLength": {
+            "value": 3072,
+            "range": [
+              50,
+              8096
+            ]
+          },
+          "topP": {
+            "value": 1,
+            "range": [
+              0.1,
+              1
+            ]
+          },
+          "presencePenalty": {
+            "value": 0,
+            "range": [
+              0,
+              1
+            ]
+          },
+          "frequencyPenalty": {
+            "value": 0,
+            "range": [
+              0,
+              1
+            ]
+          },
+          "stopSequences": {
+            "value": [],
+            "range": []
+          }
+        }
+      },
+      "clm_f12137be": {
         "enabled": false,
         "status": "ready",
         "capabilities": [

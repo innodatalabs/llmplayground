@@ -833,10 +833,11 @@ class InferenceManager:
     def __contextualai_text_generation__(self, provider_details: ProviderDetails, inference_request: InferenceRequest, announcer):
         print(inference_request)
 
-        cancelled = False
         logger.info(f"Starting inference for {inference_request.uuid} - {inference_request.model_name}")
 
         WORKFLOW_ID = "7ae28c95-7dcb-4b9d-a2e2-99eae9c66056"
+        if inference_request.model_name == "clm_f12137be":
+            WORKFLOW_ID = "f12137be-442a-4d0d-a890-223fa579d23e"
 
         infer_response = None
         headers = {
