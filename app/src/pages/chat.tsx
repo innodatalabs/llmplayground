@@ -83,6 +83,7 @@ export default function Chat() {
     const scrollRef = useRef(null)
     const silenceTimeout = useRef(null);
 
+    const audioContext = useRef(null);
     const streamRef = useRef(null);
     const processorRef = useRef(null);
 
@@ -93,6 +94,8 @@ export default function Chat() {
 
     const audioChunksRef = useRef([]);
     const mediaRecorderRef = useRef(null);
+    const [audioOn, setAudioOn] = useState(false);
+    const [autoRecord, setAutoRecord] = useState(false);
 
     const [uploadedFiles, setUploadedFiles] = useState([]);
 
@@ -152,7 +155,7 @@ export default function Chat() {
       initDB();
     }, []);
 
-    useEffect(() => {
+    useEffect(() => {  
       const startListening = async () => {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         streamRef.current = stream;
@@ -169,12 +172,24 @@ export default function Chat() {
         setAudioProcessorCallback();
       };
   
-      //startListening();
-    }, []);
+      if (audioOn) {
+        startListening();
+      } else {
+        if (processorRef.current) {
+          processorRef.current.disconnect();
+        }
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach((track) => track.stop());
+        }
+        if (audioContext.current) {
+          audioContext.current.close();
+        }
+      }
+    }, [audioOn]);
 
     useEffect(() => {
       setAudioProcessorCallback();
-    }, [rmsThreshold, recording, silenceTimeout.current]);
+    }, [rmsThreshold, recording, silenceTimeout.current, autoRecord]);
 
     const setAudioProcessorCallback = () => {
       if (!processorRef || !processorRef.current) {
@@ -189,17 +204,18 @@ export default function Chat() {
         setAudioRms(rms);
         const threshold = rmsThreshold / 100; // Adjust this threshold as needed
 
-        if (rms > threshold) {
-          startRecording();
-          if (silenceTimeout.current) { 
-            clearTimeout(silenceTimeout.current);
-            silenceTimeout.current = null;
-          }
+        if (autoRecord) {
+          if (rms > threshold) {
+            startRecording();
+            if (silenceTimeout.current) { 
+              clearTimeout(silenceTimeout.current);
+              silenceTimeout.current = null;
+            }
 
-        } else if (rms <= threshold && recording) {
-          console.log(silenceTimeout.current);
-          if (!silenceTimeout.current) {
-            silenceTimeout.current = setTimeout(stopRecording, 1000); // Adjust this timeout as needed
+          } else if (rms <= threshold && recording) {
+            if (!silenceTimeout.current) {
+              silenceTimeout.current = setTimeout(stopRecording, 1000); // Adjust this timeout as needed
+            }
           }
         }
       };
@@ -236,6 +252,12 @@ export default function Chat() {
     }
 
     const saveAudio = async (blob: Blob) => {
+      if (uploadedFiles.length > 0) {
+        toast({
+          title: "Can only attach one file at a time",
+        })
+        return;
+      }
       // Function to convert blob to base64
       const blobToDataURL = (blob) => {
         return new Promise((resolve, reject) => {
@@ -384,6 +406,12 @@ export default function Chat() {
 
     const handleDrop = async (e) => {
       e.preventDefault();
+      if (uploadedFiles.length > 0 || Array.from(e.dataTransfer.files).length > 1) {
+        toast({
+          title: "Can only attach one file at a time",
+        })
+        return;
+      }
       const files = Array.from(e.dataTransfer.files).filter(file => {
         return file.type.startsWith('image/') || file.type.startsWith('audio/')
       });
@@ -590,9 +618,10 @@ export default function Chat() {
                       onDragOver={handleDragOver}
                     >
                         <div className={"images-container"}>
-                          {uploadedFiles.map((file, index) => {
+                        {uploadedFiles.map((file, index) => {
+                          const renderFile = () => {
                             if (file.type.startsWith('image/')) {
-                                return <img key={index} src={file.payload} alt="preview" className={"images-preview"} />
+                              return <img key={index} src={file.payload} alt="preview" className={"images-preview"} />
                             }
                             if (file.type.startsWith('audio/')) {
                               return (
@@ -604,7 +633,20 @@ export default function Chat() {
                                   </div>
                                 );
                             }
-                         })}
+                          };
+
+                          return (
+                              <div key={index} style={{ margin: '10px', position: 'relative' }}>
+                                  <button 
+                                      onClick={() => setUploadedFiles([])} 
+                                      className={"remove-attachment-button"}
+                                  >
+                                      <X></X>
+                                  </button>
+                                  {renderFile()}
+                              </div>
+                          );
+                    })}
                         </div>
                         <textarea
                             className="chat-textarea"
@@ -648,14 +690,20 @@ export default function Chat() {
                             Cancel Generation
                           </Button>
                         )}
-                        {/*<AudioDisplay
+                        {<AudioDisplay
                           volume={audioRms}
                           threshold={rmsThreshold}
                           recording={recording}
                           onThresholdChange={setRmsThreshold}
+                          audioOn={audioOn}
+                          setAudioOn={setAudioOn}
+                          autoRecord={autoRecord}
+                          setAutoRecord={setAutoRecord}
+                          startRecording={startRecording}
+                          stopRecording={stopRecording}
                         >
 
-                        </AudioDisplay>*/}
+                        </AudioDisplay>}
                     </div>
                 </div>
             </div>

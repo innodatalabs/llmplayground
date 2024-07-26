@@ -1,12 +1,18 @@
-import React, { useRef } from 'react';
+import { Mic } from 'lucide-react';
+import React, { useEffect, useRef } from 'react';
+import { Button } from '../../components/ui/button';
 
 const AudioDisplay = ({
      volume,
      recording,
+     startRecording,
+     stopRecording,
      threshold,
-     listening,
-     onListeningChange,
-     onThresholdChange 
+     onThresholdChange,
+     audioOn,
+     setAudioOn,
+     autoRecord,
+     setAutoRecord
   }) => {
 
   const gaugeRef = useRef(null);
@@ -32,15 +38,50 @@ const AudioDisplay = ({
 
   return (
     <div className="audiodisplay-container">
-      <div className={recording ? "audiodisplay-recording on" : "audiodisplay-recording"}></div>
-      <div className="audiodisplay-gauge" ref={gaugeRef}>
-        <div className={(volume * 100 > threshold) ? "audiodisplay-gauge-bar blue" : "audiodisplay-gauge-bar"} style={{ width: `${volume * 100}%` }}></div>
-        <div
-          className="audiodisplay-gauge-cursor"
-          style={{ left: `${threshold}%` }}
-          onMouseDown={handleMouseDown}
-        ></div>
-      </div>
+      {audioOn && <>
+        {autoRecord && 
+        <div className={'audiodisplay-recording-container'}>
+          <div className={recording ? "audiodisplay-recording on" : "audiodisplay-recording"}></div>
+        </div>
+        }
+        {!autoRecord && 
+        <Button 
+          className={"audiodisplay-recording-button"}
+          onClick={(e) => {
+            if (!recording) {
+              startRecording()
+            } else {
+              stopRecording();
+            }
+          }}
+        >
+          <div className={!recording ? "audiodisplay-recording on" : "audiodisplay-recording"}></div>
+        </Button>}
+
+        <div className="audiodisplay-gauge" ref={gaugeRef}>
+          <div className={(volume * 100 > threshold) ? "audiodisplay-gauge-bar blue" : "audiodisplay-gauge-bar"} style={{ width: `${volume * 100}%` }}></div>
+          {autoRecord && <div
+            className="audiodisplay-gauge-cursor"
+            style={{ left: `${threshold}%` }}
+            onMouseDown={handleMouseDown}
+          ></div>}
+        </div>
+        <Button
+            className={'audiodisplay-autobutton'}
+            onClick={(e) => {
+              console.log(autoRecord);
+              setAutoRecord(!autoRecord);
+            }}
+          >{!autoRecord ? 'Manual' : 'Auto'}</Button> 
+      </>}
+      <div className="audiodisplay-micbutton-container">
+        <Button
+            className={'bg-emerald-500 hover:bg-emerald-700 on'}
+            onClick={(e) => {
+              setAudioOn(!audioOn);
+            }}
+          ><Mic></Mic></Button> 
+        </div>
     </div>
   );
 };
