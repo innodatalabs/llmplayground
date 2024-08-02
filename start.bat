@@ -1,0 +1,1 @@
+server\.venv\Scripts\python -m server.app

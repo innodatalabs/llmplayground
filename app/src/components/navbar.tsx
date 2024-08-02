@@ -1,8 +1,18 @@
+import { useAuth0 } from "@auth0/auth0-react";
 import React from "react"
 import { Link } from "react-router-dom"
+import appConfig from "../../config"
 
 export default function NavBar({ tab, children }: any) {
-  const menu = ["playground", "compare", "settings"].map((menuName, index) => (
+  const { user, logout } = useAuth0();
+
+  const menuOptions = ["chat", "promptgen"]
+
+  if (user?.isAdmin) {
+      menuOptions.push("settings");
+  }
+  
+  const menu = menuOptions.map((menuName, index) => (
     <div key = {menuName} className="align-middle mt-1 flex items-center">
       <Link
         to={`/${index > 0 ? menuName: ''}`}
@@ -26,23 +36,10 @@ export default function NavBar({ tab, children }: any) {
 
   return (
     <div className="flex flex-col font-display mb-3 border">
-      <div className="flex inline-block mx-5 my-4 gap-x-4 flex-wrap">
+      <div className="flex inline-block mx-5 my-2 gap-x-4 flex-wrap">
         {menu}
         
         <div className ="flex-1" />
-
-        <div
-          className = "ml-4 mt-1 cursor-pointer flex justify-end items-center self-flex-end"
-          onClick={() => {
-            window.open("https://discord.gg/J8sFfUK2N2", "_blank")
-          }}
-          >
-          <img
-            className = "h-[20px]"
-            src= "https://assets-global.website-files.com/6257adef93867e50d84d30e2/636e0a6a49cf127bf92de1e2_icon_clyde_blurple_RGB.png"
-          />
-          </div>
-
           <div
             className = "ml-4 mt-1 cursor-pointer flex justify-end items-center self-flex-end"
             onClick={() => {
@@ -53,6 +50,13 @@ export default function NavBar({ tab, children }: any) {
               className = "h-[35px]"
               src= "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png"
             />
+          </div>
+          <div
+            className = "ml-4 mt-1 cursor-pointer flex justify-end items-center self-flex-end"
+          >
+            <button onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })}>
+              Log Out
+            </button>
           </div>
         {children}
       </div>

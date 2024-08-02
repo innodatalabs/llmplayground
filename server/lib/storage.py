@@ -73,7 +73,6 @@ class Storage:
     def __initialize_config__(self, models_json_path: str = None):
         if models_json_path is None:
             models_json_path = os.path.join(APP_DIR, 'models.json')
-
         original_models_json = None
         if not pkg_resources.is_resource('server', 'models.json'):
             original_models_json = open('./models.json').read()

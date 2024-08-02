@@ -12,6 +12,10 @@ import {
 } from "react-router-dom"
 import { Toaster } from "./components/ui/toaster"
 import { useToast } from "./hooks/ui/use-toast"
+import { Auth0Provider } from "@auth0/auth0-react"
+import Chat, { ChatMessage, Role } from "./pages/chat"
+import { ChatMessage } from "./pages/chat/chatmessage"
+import Promptgen from "./pages/promptgen"
 
 const DEFAULT_PARAMETERS_STATE = {
   temperature: 1.0,
@@ -56,6 +60,34 @@ const DEFAULT_CONTEXTS = {
         showParametersTable: false
       }
     },
+    chat:{
+      modelsState: [],
+      messages: [],
+      convos: [{
+        name:"untitled chat",
+        messages:[]
+      }],
+      activeConvo: 0,
+      parameters: {
+        ...DEFAULT_PARAMETERS_STATE,
+        selectAllModels: false,
+        showParametersTable: false
+      }
+    },
+    promptgen:{
+      modelsState: [],
+      intents: [{
+        intent:"[No Intent]",
+        prompt:"",
+        generations:[]
+      }],
+      activeIntent: 0,
+      parameters: {
+        ...DEFAULT_PARAMETERS_STATE,
+        selectAllModels: false,
+        showParametersTable: false
+      }
+    },
   },
   MODELS: [],
 }
@@ -71,16 +103,29 @@ try {
 } finally {
   if (!SETTINGS.pages) {
     SETTINGS.pages = DEFAULT_CONTEXTS.PAGES;
+  } else {
+    if (!SETTINGS.pages.chat) {
+      SETTINGS.pages.chat = DEFAULT_CONTEXTS.PAGES.chat;
+    }
+    if (!SETTINGS.pages.promptgen) {
+      SETTINGS.pages.promptgen = DEFAULT_CONTEXTS.PAGES.promptgen;
+    }
   }
   if (!SETTINGS.models) {
     SETTINGS.models = DEFAULT_CONTEXTS.MODELS;
+  }
+  if (!SETTINGS.pages.chat.convos) {
+    SETTINGS.pages.chat.convos = []
   }
 }
 
 DEFAULT_CONTEXTS.PAGES = SETTINGS.pages;
 DEFAULT_CONTEXTS.MODELS = SETTINGS.models;
+console.log(DEFAULT_CONTEXTS);
 
 export const APIContext = React.createContext({});
+export const ChatContext = React.createContext({});
+export const PromptGenContext = React.createContext({});
 export const EditorContext = React.createContext({});
 export const ModelsStateContext = React.createContext([]);
 export const ParametersContext = React.createContext({});
@@ -213,10 +258,11 @@ const APIContextWrapper = ({children}) => {
     Inference,
   });
   
-  function createTextCompletionRequest({prompt, models}) {
+  function createTextCompletionRequest({prompt, models, messages}) {
     const url = "/api/inference/text/stream";
     const payload = {
       prompt: prompt,
+      messages: messages,
       models: models,
     };
     return createCompletionRequest(url, payload, textCompletionSubscribers);
@@ -353,6 +399,8 @@ const PlaygroundContextWrapper = ({page, children}) => {
   let [modelsStateContext, _setModelsStateContext] = React.useState(DEFAULT_CONTEXTS.PAGES[page].modelsState);
   const [modelsContext, _setModelsContext] = React.useState(DEFAULT_CONTEXTS.MODELS);
   const [historyContext, _setHistoryContext] = React.useState(DEFAULT_CONTEXTS.PAGES[page].history);
+  const [chatContext, _setChatContext] = React.useState(DEFAULT_CONTEXTS.PAGES["chat"]);
+  const [promptgenContext, _setPromptgenContext] = React.useState(DEFAULT_CONTEXTS.PAGES["promptgen"]);
 
   /* Temporary fix for models that have been purged remotely but are still cached locally */
   for(const {name} of modelsStateContext) {
@@ -460,7 +508,7 @@ const PlaygroundContextWrapper = ({page, children}) => {
     setModelsStateContext(PAGE_MODELS_STATE)
   }
 
-  const debouncedSettingsSave = useDebounce(saveSettings, 3000);
+  const debouncedSettingsSave = useDebounce(saveSettings, 1000);
 
   const setEditorContext = (newEditorContext, immediate=false) => {
     SETTINGS.pages[page].editor = {...SETTINGS.pages[page].editor, ...newEditorContext};
@@ -488,6 +536,20 @@ const PlaygroundContextWrapper = ({page, children}) => {
     
     debouncedSettingsSave()
     _setModelsContext(newModels);
+  }
+
+  const setChatContext = (newContext) => {
+    SETTINGS.pages["chat"].convos = newContext.convos;
+    SETTINGS.pages["chat"].activeConvo = newContext.activeConvo;
+    debouncedSettingsSave()
+    _setChatContext(newContext)
+  }
+
+  const setPromptgenContext = (newContext) => {
+    SETTINGS.pages["promptgen"].intents = newContext.intents;
+    SETTINGS.pages["promptgen"].activeIntents = newContext.activeIntents;
+    debouncedSettingsSave()
+    _setPromptgenContext(newContext)
   }
 
   const setModelsStateContext = (newModelsState) => {
@@ -590,7 +652,11 @@ const PlaygroundContextWrapper = ({page, children}) => {
         <ParametersContext.Provider value = {{parametersContext, setParametersContext}}>
           <ModelsContext.Provider value = {{modelsContext, setModelsContext}}>
             <ModelsStateContext.Provider value = {{modelsStateContext, setModelsStateContext}}>
-              {children}
+              <ChatContext.Provider value = {{chatContext, setChatContext}}>
+                <PromptGenContext.Provider value = {{promptgenContext, setPromptgenContext}}>
+                  {children}
+                </PromptGenContext.Provider>
+              </ChatContext.Provider>
             </ModelsStateContext.Provider>
           </ModelsContext.Provider>
         </ParametersContext.Provider>
@@ -602,7 +668,7 @@ const PlaygroundContextWrapper = ({page, children}) => {
 function ProviderWithRoutes() {
   return (
     <Routes>
-      <Route
+      {/* <Route
         path="/"
         element={
           <APIContextWrapper>
@@ -620,6 +686,30 @@ function ProviderWithRoutes() {
           <APIContextWrapper>
             <PlaygroundContextWrapper key = "compare" page = "compare">
               <Compare/>
+              <Toaster />
+            </PlaygroundContextWrapper>
+          </APIContextWrapper>
+        }
+      /> */}
+
+      <Route
+        path="/"
+        element={
+          <APIContextWrapper>
+            <PlaygroundContextWrapper key = "chat" page = "chat">
+              <Chat/>
+              <Toaster />
+            </PlaygroundContextWrapper>
+          </APIContextWrapper>
+        }
+      />
+
+      <Route
+        path="/promptgen"
+        element={
+          <APIContextWrapper>
+            <PlaygroundContextWrapper key = "promptgen" page = "promptgen">
+              <Promptgen/>
               <Toaster />
             </PlaygroundContextWrapper>
           </APIContextWrapper>
@@ -642,7 +732,7 @@ function ProviderWithRoutes() {
 export default function App() {
   return (
     <BrowserRouter>
-      <ProviderWithRoutes />
+        <ProviderWithRoutes />
     </BrowserRouter>
   )
 }

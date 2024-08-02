@@ -189,3 +189,339 @@ html, body, #app {
   opacity: 0;
   transition: opacity 500ms ease-in;
 }
+
+.chat-textarea {
+  width:100%;
+  border:1pt solid black;
+  border-radius:5pt;
+  padding:5px;
+
+}
+
+.promptgen-textarea {
+  width:100%;
+  border:1pt solid black;
+  border-radius:5pt;
+  padding:5px;
+  font-size:11pt;
+  line-height:11pt;
+  height:100px;
+}
+
+.chat-buttonarea {
+  display:flex;
+  gap:10px;
+}
+
+.chat-mainarea {
+  display:flex;
+  flex-direction: column;
+  width:100%;
+  height: 100%;
+  padding:20px 20px 40px 20px;
+}
+
+.chat-messagearea {
+  flex:1;
+  width:100%;
+  padding-right:15px;
+  overflow-y:scroll;
+  margin-bottom:10px;
+}
+
+.chat-message {
+  margin-bottom:16px;
+  position:relative;
+}
+
+.chat-message-role {
+  margin-bottom:3px;
+  font-weight: bold;
+}
+
+.chat-message-date {
+  margin-left:10px;
+  font-weight: normal;
+}
+
+.chat-message-content {
+  padding:10px;
+  border-radius:8px;
+  white-space: pre-wrap;
+  padding-bottom:20px;
+}
+
+.chat-message-editing {
+  padding:10px;
+  border-radius:8px;
+  border:1pt solid black;
+  white-space: pre-wrap;
+  padding-bottom:20px;
+  resize: none;
+  width:100%;
+}
+
+
+
+.chat-message-content.user {
+  background-color: #d9d9d9;
+}
+
+.chat-message-content.assistant {
+  background-color: rgb(185, 238, 188);
+}
+
+.chat-clipboardbutton {
+  background: transparent;
+  border:none !important;
+  outline: none !important;
+  box-shadow:none !important;
+  padding:0px; 
+  height:18px;
+  width:18px;
+}
+
+.chat-clipboardbutton-container {
+  position:absolute;
+  right:5px;
+  bottom:5px;
+  display:flex;
+  align-items:center;
+  gap:2px;
+}
+
+.chat-clipboardbutton:focus {
+  border:none !important;
+  outline: none !important;
+  box-shadow:none !important;
+}
+
+.settings-button {
+  position:absolute;
+  right: 5px;
+  top:-6px;
+  height: 25px;
+  width: 25px;
+  color:white;
+  padding:0px;
+}
+
+.settings-container {
+  position:relative;
+  padding-right:25px;
+  padding-top:10px;
+}
+
+.close-settings-button {
+  position: absolute;
+  right: 5px;
+  top: -6px;
+  height: 25px;
+  width: 25px;
+  padding:0px;
+}
+
+.convos-panel-container {
+  position:relative;
+  border-right:1pt solid #e5e7eb;
+  margin-top:-12px;
+  padding-top:8px;
+  min-width: 16px;
+}
+
+.convos-button {
+  position:absolute;
+  left: -15px;
+  top:6px;
+  height: 25px;
+  width: 25px;
+  color:white;
+  padding:0px;
+}
+
+.close-convos-button {
+  position: absolute;
+  right: 5px;
+  top: 6px;
+  height: 25px;
+  width: 25px;
+  padding:0px;
+}
+
+.convos-container {
+  margin-top: -17px;
+  margin-left: -12px;
+}
+
+.convos-list {
+  margin-top:15px;
+  margin-left:3px;
+}
+
+.convo-entry {
+  padding:4px 7px;
+  margin-right:8px;
+  border-radius:3px;
+  position:relative;
+}
+
+.convo-entry-contextMenu button {
+  height: 20px;
+  width: 20px;
+  padding:2px;
+}
+
+.convo-entry.selected {
+  background-color: rgb(217, 217, 217) !important;
+
+}
+
+.convo-entry:hover {
+  background-color: rgba(16, 185, 129, 0.2);
+  cursor:pointer;
+}
+
+.convo-entry-contextMenu {
+  display: none;
+  position:absolute;
+  right:13px;
+  top:6px;
+}
+
+.convo-entry:hover .convo-entry-contextMenu {
+  display: flex;
+}
+
+.convo-entry-wrapper {
+  position:Relative;
+}
+
+.convo-entry-wrapper:hover .convo-entry-contextMenu {
+  display: flex;
+}
+
+.chat-systemmessage {
+  display:flex;
+  align-items: center;
+  margin-top:-20px;
+  margin-bottom:10px;
+}
+
+.chat-systemmessage span {
+  margin-right:10px;
+}
+
+.images-container {
+  display:flex;
+  gap:10px;
+  margin-bottom:10px;
+}
+
+.images-preview {
+  max-width:110px;
+  max-height:100px;
+}
+
+.audiodisplay-container {
+  width: 100%;
+  padding: 10px;
+  display:flex;
+  align-items: center;
+  margin-top:5px;
+  gap:6px;
+  padding-right:0px;
+}
+
+.audiodisplay-gauge {
+  position: relative;
+  width: 100%;
+  height: 30px;
+  background-color: #ddd;
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.audiodisplay-gauge-bar {
+  position: absolute;
+  height: 100%;
+  background-color: #DDD;
+  transition: width 0.2s ease;
+}
+
+.audiodisplay-gauge-bar {
+  position: absolute;
+  height: 100%;
+  background-color: #BBB;
+  /* transition: width 0.1s ease; */
+}
+
+.audiodisplay-gauge-bar.blue {
+  background-color: #59D;
+}
+
+.audiodisplay-threshold-bar {
+
+}
+
+.audiodisplay-recording {
+  background-color:rgb(98, 53, 53);
+  border-radius:50%;
+  height:20px;
+  width:20px;
+}
+
+.audiodisplay-recording.on {
+  background-color:#C00;
+
+}
+
+.audiodisplay-gauge-cursor {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  width: 5px;
+  background-color: red;
+  cursor: pointer;
+}
+.audiodisplay-micbutton-container {
+  flex: 1;
+  text-align: right;
+}
+
+.audiodisplay-micbutton {
+  opacity:0.5;
+}
+
+.audiodisplay-micbutton.on {
+  opacity:1;
+}
+
+.audiodisplay-recording-button {
+  padding-left:6px;
+  padding-right:6px;
+}
+
+.remove-attachment-button {
+  position:absolute;
+  top:-5px;
+  right:-5px;
+  border-radius:50%;
+  background-color: #444;
+  color:white;
+  width:20px;
+  height:20px;
+  border:1px solid white;
+  transition-property: background-color;
+  transition-duration: .15s;
+  transition-timing-function: cubic-bezier(.4, 0, .2,1);
+  text-align: center;
+}
+.remove-attachment-button svg {
+  width:15px;
+  margin-top:-2px;
+  margin-left:1.5px;
+}
+
+.remove-attachment-button:hover {
+  background-color: #777;
+}
