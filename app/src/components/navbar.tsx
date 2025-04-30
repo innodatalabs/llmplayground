@@ -6,7 +6,7 @@ import appConfig from "../../config"
 export default function NavBar({ tab, children }: any) {
   const { user, logout } = useAuth0();
 
-  const menuOptions = ["playground", "compare"]
+  const menuOptions = ["chat"]
 
   if (user?.isAdmin) {
       menuOptions.push("settings");
@@ -36,7 +36,7 @@ export default function NavBar({ tab, children }: any) {
 
   return (
     <div className="flex flex-col font-display mb-3 border">
-      <div className="flex inline-block mx-5 my-4 gap-x-4 flex-wrap">
+      <div className="flex inline-block mx-5 my-2 gap-x-4 flex-wrap">
         {menu}
         
         <div className ="flex-1" />
